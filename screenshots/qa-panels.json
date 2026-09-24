@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/extract",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Breakline",
+      "hasCanvas": false,
+      "bodyTextLen": 2399,
+      "bodyTextHash": "e2bb22aafa1c55ee49d72ecf01f6599ca503decd68c403b7b689bf5469be9ac0",
+      "bodyTextPrefix": "BL Breakline · S.R. 67 & C.R. 400 S topographic survey Des. 2501",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/qa-panels.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Breakline",
+      "hasCanvas": false,
+      "bodyTextLen": 2052,
+      "bodyTextHash": "1ffadf0d88751f7dad472db59f03b6ff9861f8aadc05f0e2697597e2b1627b7d",
+      "bodyTextPrefix": "BL Breakline · S.R. 67 & C.R. 400 S topographic survey Desk 1 Un",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/qa-panels-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/qa-panels.json"
+}

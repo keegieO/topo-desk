@@ -1,0 +1,174 @@
+import { useState, type FormEvent } from "react";
+import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
+import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { COMPANY } from "@/lib/company";
+
+export const Route = createFileRoute("/login")({ component: Login });
+
+function Login() {
+  const { user, isPending } = useCurrentUserState();
+  const [mode, setMode] = useState<"in" | "up">("in");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (isPending) {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-background">
+        <div className="h-10 w-48 animate-pulse rounded-md bg-muted" />
+      </main>
+    );
+  }
+  if (user) return <Navigate to="/" />;
+
+  async function onEmail(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!authEnabled) return;
+    const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email") || "").trim();
+    const password = String(fd.get("password") || "");
+    const name = String(fd.get("name") || "").trim();
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    if (mode === "up" && password.length < 8) {
+      setError("Password needs at least 8 characters.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      if (mode === "up") {
+        const { error: err } = await authClient.signUp.email({
+          email,
+          password,
+          name: name || email.split("@")[0],
+        });
+        if (err) throw new Error(err.message || "Could not create the account.");
+      } else {
+        const { error: err } = await authClient.signIn.email({ email, password });
+        if (err) throw new Error(err.message || "Could not sign in.");
+      }
+      await authClient.getSession();
+      window.location.href = "/";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign-in failed.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1fr)_28rem]">
+      <section className="hidden flex-col justify-between border-r border-border bg-title px-10 py-10 lg:flex">
+        <Link to="/" className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary text-[0.625rem] font-semibold tracking-wide text-primary-foreground">
+            BL
+          </span>
+          <span>
+            <span className="block text-sm font-medium leading-tight">{COMPANY.name}</span>
+            <span className="block text-[0.6875rem] text-muted-foreground">{COMPANY.city}</span>
+          </span>
+        </Link>
+        <div className="max-w-md">
+          <p className="kicker">Survey tab · Field books</p>
+          <h1 className="mt-3 font-display text-4xl font-medium tracking-tight text-balance">
+            Conventional extraction, coded for OpenRoads.
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+            {COMPANY.line} Sign in to your shop — jobs, field books, QA, and ORD packages stay on your account.
+          </p>
+        </div>
+        <p className="font-mono text-[0.6875rem] text-muted-foreground">
+          {COMPANY.hours} · {COMPANY.phone}
+        </p>
+      </section>
+
+      <section className="flex flex-col justify-center px-6 py-10 sm:px-10">
+        <div className="mx-auto w-full max-w-sm">
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary text-[0.625rem] font-semibold text-primary-foreground">
+              BL
+            </span>
+            <span className="text-sm font-medium">{COMPANY.name}</span>
+          </div>
+          <h2 className="font-display text-2xl font-medium tracking-tight">
+            {mode === "in" ? "Sign in" : "Create account"}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mode === "in" ? "Shop floor, extract, and billing." : "Email and password, stored on this app."}
+          </p>
+
+          {authEnabled ? (
+            <div className="mt-6 flex flex-col gap-2">
+              {GROK_PROVIDERS.map((p) => (
+                <Button
+                  key={p.providerId}
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => signIn(p.providerId, { callbackURL: "/" })}
+                >
+                  Continue with {p.label}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-6 text-sm text-muted-foreground">Sign-in is disabled.</p>
+          )}
+
+          <div className="my-6 flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">or email</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <form onSubmit={onEmail} className="flex flex-col gap-3">
+            {mode === "up" ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" name="name" autoComplete="name" placeholder="Shop name or yours" />
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" name="email" type="email" autoComplete="email" required />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete={mode === "up" ? "new-password" : "current-password"}
+                required
+                minLength={mode === "up" ? 8 : undefined}
+              />
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <Button type="submit" disabled={busy || !authEnabled} className="mt-1 w-full">
+              {busy ? "Working…" : mode === "in" ? "Sign in" : "Create account"}
+            </Button>
+          </form>
+
+          <p className="mt-5 text-sm text-muted-foreground">
+            {mode === "in" ? "New shop?" : "Already have an account?"}{" "}
+            <button
+              type="button"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+              onClick={() => {
+                setMode(mode === "in" ? "up" : "in");
+                setError(null);
+              }}
+            >
+              {mode === "in" ? "Create an account" : "Sign in"}
+            </button>
+          </p>
+        </div>
+      </section>
+    </main>
+  );
+}

@@ -1,0 +1,1 @@
+import{S as e,n as t}from"./store-CJCTXVkC.js";function n(n){let r=n.csvText??(n.csvName===`2501384_SR67_Topo_PNEZD.csv`||n.des===`2501384`?e:void 0),i=n.csvName??(r?`2501384_SR67_Topo_PNEZD.csv`:void 0);r&&i?t.getState().loadBook(r,i,{remaps:n.remaps,userLines:n.userLines,survey:n.survey,order:n.coordOrder}):r||t.getState().clear()}export{n as t};

@@ -1,0 +1,40 @@
+-- Conventional survey jobs + field books, scoped per user.
+create table if not exists jobs (
+  id text primary key,
+  user_id text not null,
+  name text not null,
+  client text not null default '',
+  pm text not null default '',
+  email text not null default '',
+  phone text not null default '',
+  des text not null default '',
+  county text not null default '',
+  crs text not null default 'Indiana InGCS — NAD 1983 (2011)',
+  kind text not null default 'conventional',
+  status text not null default 'intake',
+  miles numeric not null default 0,
+  hours numeric not null default 0,
+  planimetrics boolean not null default false,
+  rush boolean not null default false,
+  due text not null default '',
+  notes text not null default '',
+  csv_name text,
+  csv_text text,
+  remaps text not null default '{}',
+  user_lines text not null default '[]',
+  coord_order text not null default 'PNEZD',
+  survey text not null default '{}',
+  ticket text not null default '',
+  files text not null default '[]',
+  time_log text not null default '[]',
+  change_orders text not null default '[]',
+  invoice_status text not null default 'none',
+  invoice_no text,
+  sent_at text,
+  paid_at text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists jobs_user_id_idx on jobs (user_id);
+create index if not exists jobs_user_status_idx on jobs (user_id, status);

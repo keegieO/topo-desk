@@ -1,0 +1,211 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-background: #d8d8d4;
+  --color-foreground: #1a1c1e;
+  --color-card: #f3f3ef;
+  --color-card-foreground: #1a1c1e;
+  --color-popover: #f7f7f3;
+  --color-popover-foreground: #1a1c1e;
+  --color-primary: #215e9e;
+  --color-primary-foreground: #f7f7f3;
+  --color-secondary: #e6e6e0;
+  --color-secondary-foreground: #1a1c1e;
+  --color-muted: #e6e6e0;
+  --color-muted-foreground: #5c6066;
+  --color-accent: #e2e8ef;
+  --color-accent-foreground: #1a1c1e;
+  --color-destructive: #8a3228;
+  --color-border: #c8c8c2;
+  --color-input: #c8c8c2;
+  --color-ring: #215e9e;
+  --color-ok: #2c5a45;
+  --color-warn: #8a4b1f;
+  --color-ribbon: #ecece8;
+  --color-title: #e4e4e0;
+  --color-cad: #1c241c;
+  --color-level: #215e9e;
+  --color-level-foreground: #f7f7f3;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  .kicker {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+  }
+
+  .ord-map {
+    background: var(--color-cad);
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+  }
+
+  .ord-icon {
+    background: transparent;
+    border: none;
+  }
+
+  .ord-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.85));
+  }
+
+  .ord-mark.is-on {
+    filter: drop-shadow(0 0 3px #fff);
+  }
+
+  .ord-label {
+    background: transparent;
+    border: none;
+  }
+
+  .ord-label span {
+    color: #f4f4f0;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+    white-space: nowrap;
+  }
+
+  .ord-label span.is-note {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .ord-label span.is-note.is-on {
+    color: #ffe14a;
+  }
+
+  .ord-legend {
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+  }
+
+  .ord-tip {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 4px 6px;
+    border-radius: 4px;
+  }
+
+  .leaflet-container {
+    font-family: var(--font-sans);
+    background: var(--color-cad);
+    height: 100%;
+    width: 100%;
+  }
+
+  .leaflet-control-zoom a {
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    color: var(--color-foreground);
+    background: var(--color-card);
+    border-color: var(--color-border);
+  }
+
+  .leaflet-bar {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: none;
+  }
+
+  .leaflet-control-scale-line {
+    background: rgb(243 243 239 / 0.85);
+    border-color: var(--color-foreground);
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+  }
+
+  .leaflet-control-attribution {
+    background: rgb(243 243 239 / 0.75);
+    font-size: 0.625rem;
+  }
+
+  .touch-none canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .cad-split {
+    width: 6px;
+    flex: 0 0 6px;
+    background: var(--color-border);
+    cursor: col-resize;
+  }
+
+  .cad-split:hover,
+  .cad-split[data-separator-state="dragging"] {
+    background: var(--color-primary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
