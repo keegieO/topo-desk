@@ -937,75 +937,80 @@ export function PlanMap() {
   return (
     <div className="flex h-full min-h-0 w-full">
     <div className={cn("relative h-full min-h-0 min-w-0 overflow-hidden bg-cad", earthOn ? "w-1/2" : "w-full", drawCursor ? "cursor-crosshair" : "")}>
-      <div className="ord-view-chrome pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-wrap items-center justify-between gap-2 px-2 py-1">
-        <span className="rounded-sm bg-card/90 px-2 py-0.5 font-mono text-[0.6875rem] text-foreground shadow-sm">
-          View 1 — Top
-        </span>
-        <div className="pointer-events-auto flex overflow-hidden rounded-sm bg-card/90 shadow-sm">
-          {MAP_MODES.map((m) => (
+      <div className="ord-view-chrome pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 px-2 py-1">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span className="rounded-sm bg-card/90 px-2 py-0.5 font-mono text-[0.6875rem] text-foreground shadow-sm">
+            View 1 — Top
+          </span>
+          <div className="pointer-events-auto flex overflow-hidden rounded-sm bg-card/90 shadow-sm">
+            {MAP_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setMapMode(m.id)}
+                className={cn(
+                  "h-7 px-2 font-mono text-[0.6875rem]",
+                  mapMode === m.id ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
+                )}
+              >
+                {m.label}
+              </button>
+            ))}
             <button
-              key={m.id}
               type="button"
-              onClick={() => setMapMode(m.id)}
+              onClick={() => setEarthOn(!earthOn)}
               className={cn(
-                "h-7 px-2 font-mono text-[0.6875rem]",
-                mapMode === m.id ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
+                "h-7 border-l border-border px-2 font-mono text-[0.6875rem]",
+                earthOn ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
               )}
             >
-              {m.label}
+              Earth
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setEarthOn(!earthOn)}
-            className={cn(
-              "h-7 border-l border-border px-2 font-mono text-[0.6875rem]",
-              earthOn ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
-            )}
-          >
-            Earth
-          </button>
+          </div>
         </div>
-        {gcsOn ? (
-        <div className="pointer-events-auto flex w-[20rem] max-w-[min(100%,20rem)] flex-col gap-1 rounded-sm bg-card/95 px-2 py-1.5 shadow-sm">
-          <span className="font-mono text-[0.6875rem] font-medium text-foreground">{gcsName(origin)}</span>
-          <span className="truncate text-[0.625rem] text-muted-foreground">{gcsAbout(origin)}</span>
-          <label className="mt-0.5 flex items-center gap-2">
-            <span className="w-12 shrink-0 text-[0.625rem] text-muted-foreground">State</span>
-            <NativeSelect
-              aria-label="State"
-              className="h-7 flex-1 px-1 py-0 font-mono text-[0.6875rem]"
-              value={stateOfCrs(crsId === "auto" ? origin.id : crsId)}
-              onChange={(e) => {
-                const next = zonesForState(e.target.value)[0];
-                if (next) setCrsId(next.id);
-              }}
-            >
-              {["Indiana", "Ohio", "Michigan", "Illinois", "Kentucky"].map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </NativeSelect>
-          </label>
-          <label className="flex items-center gap-2">
-            <span className="w-12 shrink-0 text-[0.625rem] text-muted-foreground">Zone</span>
-            <NativeSelect
-              aria-label="County or state plane zone"
-              className="h-7 flex-1 px-1 py-0 font-mono text-[0.6875rem]"
-              value={crsId === "auto" ? origin.id : crsId}
-              onChange={(e) => setCrsId(e.target.value)}
-            >
-              <option value="auto">Auto (from coordinates)</option>
-              {zonesForState(stateOfCrs(crsId === "auto" ? origin.id : crsId)).map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </NativeSelect>
-          </label>
+        <div className="pointer-events-auto flex w-[17.5rem] max-w-[min(100%,17.5rem)] shrink-0 flex-col gap-1">
+          {gcsOn ? (
+            <div className="flex flex-col gap-1 rounded-sm border border-border bg-card/95 px-2 py-1.5 shadow-sm">
+              <span className="truncate font-mono text-[0.6875rem] font-medium text-foreground">{gcsName(origin)}</span>
+              <span className="truncate text-[0.625rem] text-muted-foreground">{gcsAbout(origin)}</span>
+              <label className="flex items-center gap-2">
+                <span className="w-10 shrink-0 text-[0.625rem] text-muted-foreground">State</span>
+                <NativeSelect
+                  aria-label="State"
+                  className="h-7 flex-1 px-1 py-0 font-mono text-[0.6875rem]"
+                  value={stateOfCrs(crsId === "auto" ? origin.id : crsId)}
+                  onChange={(e) => {
+                    const next = zonesForState(e.target.value)[0];
+                    if (next) setCrsId(next.id);
+                  }}
+                >
+                  {["Indiana", "Ohio", "Michigan", "Illinois", "Kentucky"].map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="w-10 shrink-0 text-[0.625rem] text-muted-foreground">Zone</span>
+                <NativeSelect
+                  aria-label="County or state plane zone"
+                  className="h-7 flex-1 px-1 py-0 font-mono text-[0.6875rem]"
+                  value={crsId === "auto" ? origin.id : crsId}
+                  onChange={(e) => setCrsId(e.target.value)}
+                >
+                  <option value="auto">Auto (from coordinates)</option>
+                  {zonesForState(stateOfCrs(crsId === "auto" ? origin.id : crsId)).map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </label>
+            </div>
+          ) : null}
+          {contoursOn && terrain ? <TerrainReadout /> : terrainBusy ? <TerrainReadout /> : null}
         </div>
-        ) : null}
       </div>
 
       <div ref={hostRef} className="ord-map h-full w-full" />
@@ -1036,7 +1041,6 @@ export function PlanMap() {
         </div>
       ) : null}
 
-      {contoursOn && terrain ? <TerrainReadout /> : terrainBusy ? <TerrainReadout /> : null}
       {selectedChain || selected ? (
         <FeatureEdit chain={selectedChain} shot={selectedChain ? undefined : selected} />
       ) : null}
@@ -1079,7 +1083,7 @@ function TerrainReadout() {
       ? sampleElevation(terrain.pts, terrain.tris, cursor.n, cursor.e)
       : null;
   return (
-    <div className="pointer-events-none absolute top-12 right-3 z-20 rounded-md border border-border bg-card/95 px-2.5 py-1.5 font-mono text-[0.6875rem] shadow-md">
+    <div className="pointer-events-none rounded-sm border border-border bg-card/95 px-2.5 py-1.5 font-mono text-[0.6875rem] shadow-sm">
       <p>Terrain Model: {name}</p>
       {busy || !terrain ? (
         <p>Building surface…</p>
@@ -1417,7 +1421,7 @@ function ControlTable({
 }) {
   if (!shots.length) return null;
   return (
-    <div className="pointer-events-none absolute top-10 right-3 z-20 hidden max-w-[min(100%-2rem,36rem)] overflow-hidden rounded-sm border border-foreground/40 bg-card/95 text-foreground shadow-md md:block">
+    <div className="pointer-events-none absolute right-2 bottom-8 z-20 hidden max-h-[40%] max-w-[min(100%-1rem,28rem)] overflow-auto rounded-sm border border-foreground/40 bg-card/95 text-foreground shadow-md md:block">
       <p className="border-b border-border px-2 py-1 font-mono text-[0.625rem] uppercase tracking-wide">
         {crs} · {unit}
       </p>
