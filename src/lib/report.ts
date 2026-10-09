@@ -105,7 +105,7 @@ export function buildTransmittal(opts: {
   lines.push("- This transmittal");
   lines.push("");
   lines.push("Codes follow the INDOT OpenRoads survey feature-definition list.");
-  lines.push("Breaklines flagged Break Line / Spot And Break are DTM-ready.");
+  lines.push("GeoLine Solutionss flagged Break Line / Spot And Break are DTM-ready.");
   lines.push("QA/QC is run in Extract before this package leaves the desk.");
   lines.push("");
   lines.push(`${firm.name}  ·  ${firmCityLine(firm)}`);

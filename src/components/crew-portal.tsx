@@ -14,7 +14,7 @@ export function CrewPortal() {
             Drop the book. Get an ORD-ready file.
           </h1>
           <p className="mt-3 max-w-xl text-base text-muted-foreground">
-            Breakline is the extraction sub. Crews and PMs send conventional field books. We reduce,
+            GeoLine Solutions is the extraction sub. Crews and PMs send conventional field books. We reduce,
             extract linework, code to INDOT, QA, and hand back a package you drop into OpenRoads.
           </p>
           <p className="mt-4 text-sm text-muted-foreground">
@@ -97,7 +97,7 @@ export function CrewPortal() {
             ))}
           </ul>
           <p className="mt-4 text-xs text-muted-foreground">
-            LAS/LAZ classification stays in the lidar stack. Breakline codes the vectors to INDOT and runs the
+            LAS/LAZ classification stays in the lidar stack. GeoLine Solutions codes the vectors to INDOT and runs the
             shop — tickets, QA, package, invoice.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function CrewPortal() {
         <dl className="mt-3 grid gap-1.5 font-mono text-sm sm:grid-cols-2">
           <Rate k="Conventional reduction" v={`$${rates.conventionalHr}/hr`} />
           <Rate k="LiDAR classification" v={`$${rates.lidarClassMile.toLocaleString()}/mi`} />
-          <Rate k="Breakline extraction" v={`$${rates.breaklineMile.toLocaleString()}/mi`} />
+          <Rate k="GeoLine Solutions extraction" v={`$${rates.breaklineMile.toLocaleString()}/mi`} />
           <Rate k="Planimetrics" v={`$${rates.planimetricMile.toLocaleString()}/mi`} />
           <Rate k="INDOT coding + ORD book" v={`$${rates.codingJob}/job`} />
           <Rate k="Rush" v="1.35×" />
@@ -133,7 +133,7 @@ export function CrewPortal() {
         kicker="Send a job"
         title="Crew drop-off"
         blurb="PMs send LAS/LAZ, field books, and control. Quote updates as you type. Put it on the desk and we extract."
-        submit="Send to Breakline"
+        submit="Send to GeoLine Solutions"
       />
     </div>
   );

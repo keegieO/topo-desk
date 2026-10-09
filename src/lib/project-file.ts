@@ -4,8 +4,8 @@ import type { Leader } from "./notes";
 import type { SurveyMeta } from "./job-types";
 import { useBook } from "./store";
 
-export type BreaklineProject = {
-  kind: "breakline-project";
+export type GeoLineProject = {
+  kind: "geoline-project";
   version: 1;
   fileName: string;
   raw: string;
@@ -19,8 +19,8 @@ export type BreaklineProject = {
 
 export function packProject(): string {
   const s = useBook.getState();
-  const doc: BreaklineProject = {
-    kind: "breakline-project",
+  const doc: GeoLineProject = {
+    kind: "geoline-project",
     version: 1,
     fileName: s.fileName,
     raw: s.raw,
@@ -34,17 +34,17 @@ export function packProject(): string {
   return JSON.stringify(doc);
 }
 
-export function readProject(text: string): BreaklineProject | null {
+export function readProject(text: string): GeoLineProject | null {
   try {
-    const doc = JSON.parse(text) as Partial<BreaklineProject>;
-    if (doc.kind !== "breakline-project" || typeof doc.raw !== "string") return null;
-    return doc as BreaklineProject;
+    const doc = JSON.parse(text) as Partial<GeoLineProject>;
+    if (doc.kind !== "geoline-project" || typeof doc.raw !== "string") return null;
+    return doc as GeoLineProject;
   } catch {
     return null;
   }
 }
 
-export function applyProject(doc: BreaklineProject) {
+export function applyProject(doc: GeoLineProject) {
   const book = useBook.getState();
   book.loadBook(doc.raw, doc.fileName || "fieldbook.csv", {
     remaps: doc.remaps,

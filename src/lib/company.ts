@@ -1,11 +1,11 @@
 export const COMPANY = {
-  name: "Breakline",
-  legal: "Breakline Extraction",
+  name: "GeoLine Solutions",
+  legal: "GeoLine Solutions LLC",
   city: "Greenwood, Indiana",
-  tagline: "Conventional field-book extraction for survey crews.",
-  line: "INDOT-coded. ORD-ready. You shoot it — we reduce it.",
+  tagline: "Production-grade field-book reduction for Indiana survey crews.",
+  line: "INDOT-coded. Civil 3D–ready. You shoot it — we reduce it.",
   phone: "(317) 555-0167",
-  email: "desk@breakline.work",
+  email: "desk@geolinesolutions.com",
   hours: "Mon–Fri 7:00–5:00 ET",
   terms: "Net 15",
 };
@@ -20,7 +20,7 @@ export const RATES = {
 };
 
 export const DISCLAIMER =
-  "Breakline Extraction provides CAD extraction, feature coding, and field-book reduction as a subcontractor. We do not perform licensed land surveying, do not stamp plats or legal descriptions, and do not set or certify monuments. Deliverables support the client's licensed land surveyor of record.";
+  "GeoLine Solutions provides CAD extraction, feature coding, and field-book reduction as a subcontractor. We do not perform licensed land surveying, do not stamp plats or legal descriptions, and do not set or certify monuments. Deliverables support the client's licensed land surveyor of record.";
 
 export const OUT_OF_SCOPE = [
   "Licensed land-surveyor stamp or certification",
@@ -95,7 +95,7 @@ export const DELIVER_LIST = [
   "Station and offset CSV on the roadway alignment",
   "Plan sheet — linework, north, scale, control",
   "QA report — unmatched, duplicates, spikes, open strings",
-  "Invoice — Net 15, payable to Breakline Extraction",
+  "Invoice — Net 15, payable to GeoLine Solutions LLC",
 ];
 
 export const METHOD = [

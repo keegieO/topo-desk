@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Breakline";
+const APP_NAME = "GeoLine Solutions";
 
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
   const { getSessionUser } = await import("@/lib/auth/verify.server");
@@ -25,7 +25,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Breakline — conventional field-book extraction for survey crews. INDOT-coded, ORD-ready PNEZD, DXF, and QA.",
+          "GeoLine Solutions — conventional field-book extraction for survey crews. INDOT-coded, ORD-ready PNEZD, DXF, and QA.",
       },
     ],
     links: [

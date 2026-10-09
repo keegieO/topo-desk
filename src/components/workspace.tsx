@@ -53,7 +53,7 @@ export async function openSurveyFiles(fileList: FileList | File[] | null, append
         toast.success(`Opened ${doc.fileName || file.name}`);
         continue;
       }
-      toast.error(`${file.name} is not a Breakline file`);
+      toast.error(`${file.name} is not a GeoLine Solutions file`);
       continue;
     }
     rest.push(file);
@@ -357,7 +357,7 @@ function CadShell() {
                       <p className="font-display text-lg font-medium">Open a field book</p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Drop a CSV, RW5, or FBK, or use File → Open. Set State and Zone in the map corner so the
-                        aerial matches the shots. File → Save file writes a Breakline file you can open on this PC later.
+                        aerial matches the shots. File → Save file writes a GeoLine Solutions file you can open on this PC later.
                       </p>
                     </div>
                   </div>

@@ -152,7 +152,7 @@ export const LINKING_CODES: { code: string; meaning: string }[] = [
 export const LINKING_SET = new Set(LINKING_CODES.map((c) => c.code));
 
 export const ATTR_HINT: Record<string, string> = {
-  "Break Line": "Breakline — used in the DTM",
+  "Break Line": "GeoLine Solutions — used in the DTM",
   "Spot And Break": "Spot elevation and breakline",
   Boundary: "Terrain boundary",
   Void: "Void / do not triangulate through",

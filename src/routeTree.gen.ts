@@ -16,6 +16,7 @@ import { Route as CrewRouteImport } from './routes/crew'
 import { Route as DeliverRouteImport } from './routes/deliver'
 import { Route as ExtractRouteImport } from './routes/extract'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -54,6 +55,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/deliver': typeof DeliverRoute
   '/extract': typeof ExtractRoute
   '/login': typeof LoginRoute
+  '/projects': typeof ProjectsRoute
   '/shop': typeof ShopRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/deliver': typeof DeliverRoute
   '/extract': typeof ExtractRoute
   '/login': typeof LoginRoute
+  '/projects': typeof ProjectsRoute
   '/shop': typeof ShopRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/deliver': typeof DeliverRoute
   '/extract': typeof ExtractRoute
   '/login': typeof LoginRoute
+  '/projects': typeof ProjectsRoute
   '/shop': typeof ShopRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/deliver'
     | '/extract'
     | '/login'
+    | '/projects'
     | '/shop'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/deliver'
     | '/extract'
     | '/login'
+    | '/projects'
     | '/shop'
     | '/api/auth/$'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/deliver'
     | '/extract'
     | '/login'
+    | '/projects'
     | '/shop'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   DeliverRoute: typeof DeliverRoute
   ExtractRoute: typeof ExtractRoute
   LoginRoute: typeof LoginRoute
+  ProjectsRoute: typeof ProjectsRoute
   ShopRoute: typeof ShopRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeliverRoute: DeliverRoute,
   ExtractRoute: ExtractRoute,
   LoginRoute: LoginRoute,
+  ProjectsRoute: ProjectsRoute,
   ShopRoute: ShopRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

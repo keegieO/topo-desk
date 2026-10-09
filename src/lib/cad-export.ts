@@ -7,7 +7,7 @@ import {
 } from "./chains";
 import { resolveFeature, type LabeledShot } from "./label";
 import { styleForCode } from "./symbology";
-import { fishbeckLayer } from "./fishbeck";
+import { fishbeckLayer, civilLayer, CIVIL_LAYER } from "./fishbeck";
 import type { Leader } from "./notes";
 import type { ContourRing } from "./tin";
 import type { TerrainModel } from "./terrain";
@@ -63,22 +63,47 @@ function aciFromHex(hex: string): number {
   return best;
 }
 
+/**
+ * Build a DXF R12 file from survey data.
+ *
+ * Layer naming convention (selectable via `layerStd`):
+ *   "indot"  — INDOT/Fishbeck ORD level names  (S_RDWY_*, S_CTRL_*, …)  [default]
+ *   "civil3d"— Civil 3D / NCS standard names   (V-NODE-BLCR, V-SURF-TIN, …)
+ *   "both"   — Civil 3D primary, INDOT in xdata GROUP_CODE 1001/1000
+ */
 export function buildDxf(opts: {
   shots: LabeledShot[];
   chains: Chain[];
   leaders?: Leader[];
   contours?: ContourRing[];
+  /** Layer naming standard to embed. Defaults to "indot". */
+  layerStd?: "indot" | "civil3d" | "both";
 }): string {
   const { shots, chains } = opts;
+  const std = opts.layerStd ?? "indot";
+
   const layers = new Map<string, number>();
-  const ensure = (code: string) => {
-    const name = code === "P-LABEL" ? "S_TOPO_Text" : fishbeckLayer(code);
+  const ensure = (code: string): string => {
+    const name =
+      code === "P-LABEL"
+        ? std === "civil3d" || std === "both"
+          ? CIVIL_LAYER.LABEL
+          : "S_TOPO_Text"
+        : std === "indot"
+          ? fishbeckLayer(code)
+          : civilLayer(code);
     if (!layers.has(name)) layers.set(name, aciFromHex(styleForCode(code).color));
     return name;
   };
+
+  const textLayer  = std === "civil3d" || std === "both" ? CIVIL_LAYER.LABEL       : "S_TOPO_Text";
+  const ctourLayer = std === "civil3d" || std === "both" ? CIVIL_LAYER.CONTOUR_MAJOR : "S_SURF_MajorContours";
+  const tinLayer   = std === "civil3d" || std === "both" ? CIVIL_LAYER.TIN_FACE     : "S_SURF_TIN";
+
   ensure("P-LABEL");
-  layers.set("S_TOPO_Text", 7);
-  layers.set("S_SURF_MajorContours", 2);
+  layers.set(textLayer, 7);
+  layers.set(ctourLayer, 2);
+  layers.set(tinLayer, 5);
 
   const noted = new Set((opts.leaders ?? []).map((l) => l.shotUid).filter(Boolean));
 
@@ -110,7 +135,7 @@ export function buildDxf(opts: {
   for (const ring of opts.contours ?? []) {
     if (!ring.index || ring.pts.length < 2) continue;
     ents += pair(0, "POLYLINE");
-    ents += pair(8, "S_SURF_MajorContours");
+    ents += pair(8, ctourLayer);
     ents += pair(66, 1);
     ents += pair(70, 8);
     ents += pair(10, 0);
@@ -120,17 +145,17 @@ export function buildDxf(opts: {
     for (let i = 0; i < ring.pts.length; i += step) {
       const v = ring.pts[i];
       ents += pair(0, "VERTEX");
-      ents += pair(8, "S_SURF_MajorContours");
+      ents += pair(8, ctourLayer);
       ents += pair(10, v.e.toFixed(4));
       ents += pair(20, v.n.toFixed(4));
       ents += pair(30, ring.z.toFixed(2));
       ents += pair(70, 32);
     }
     ents += pair(0, "SEQEND");
-    ents += pair(8, "S_SURF_MajorContours");
+    ents += pair(8, ctourLayer);
     const mid = ring.pts[Math.floor(ring.pts.length / 2)];
     ents += pair(0, "TEXT");
-    ents += pair(8, "S_SURF_MajorContours");
+    ents += pair(8, ctourLayer);
     ents += pair(10, mid.e.toFixed(4));
     ents += pair(20, mid.n.toFixed(4));
     ents += pair(30, ring.z.toFixed(2));
@@ -141,7 +166,7 @@ export function buildDxf(opts: {
   for (const note of opts.leaders ?? []) {
     if (note.arrow) {
       ents += pair(0, "LINE");
-      ents += pair(8, "S_TOPO_Text");
+      ents += pair(8, textLayer);
       ents += pair(10, note.e.toFixed(4));
       ents += pair(20, note.n.toFixed(4));
       ents += pair(30, 0);
@@ -151,7 +176,7 @@ export function buildDxf(opts: {
     }
     note.text.split("\n").forEach((line, i) => {
       ents += pair(0, "TEXT");
-      ents += pair(8, "S_TOPO_Text");
+      ents += pair(8, textLayer);
       ents += pair(10, note.e.toFixed(4));
       ents += pair(20, (note.n - i * 2.4).toFixed(4));
       ents += pair(30, 0);
@@ -170,7 +195,7 @@ export function buildDxf(opts: {
     const label = CONTROL.has(s.codeToken.toUpperCase()) || noted.has(s.uid);
     if (label && s.point) {
       ents += pair(0, "TEXT");
-      ents += pair(8, "S_TOPO_Text");
+      ents += pair(8, textLayer);
       ents += pair(10, (s.easting + 1.5).toFixed(4));
       ents += pair(20, (s.northing + 1.5).toFixed(4));
       ents += pair(30, s.elevation.toFixed(4));
@@ -283,7 +308,7 @@ ${opts.terrain.tris.map((t) => `          <F>${t.a + 1} ${t.b + 1} ${t.c + 1}</F
     <Imperial linearUnit="foot" areaUnit="squareFoot" volumeUnit="cubicFoot" temperatureUnit="fahrenheit" pressureUnit="inchHG"/>
   </Units>
   <CoordinateSystem desc="${xmlEsc(crs)}" horizontalCoordinateSystemName="${xmlEsc(crs)}"/>
-  <Application name="Breakline" version="1.0" manufacturer="Breakline Extraction"/>
+  <Application name="GeoLine Solutions" version="1.0" manufacturer="GeoLine Solutions LLC"/>
   <Project name="${xmlEsc(project)}"/>
   <CgPoints>${pts ? `\n${pts}\n  ` : ""}</CgPoints>
   <PlanFeatures>${feats ? `\n${feats}\n  ` : ""}</PlanFeatures>${surface}

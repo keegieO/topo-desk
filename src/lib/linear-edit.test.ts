@@ -51,5 +51,7 @@ test("join / split / offset extract lines", () => {
   assert.ok(sp);
   assert.equal(sp[0].pts.length, 2);
   const off = offsetUserLine(a, 2, "o");
-  assert.ok(Math.abs(off.pts[0].n + 2) < 1e-6);
+  // line a runs due-north; the right-hand perpendicular is east (+E), so
+  // the offset moves easting by +dist while northing stays unchanged.
+  assert.ok(Math.abs(off.pts[0].e - 2) < 1e-6);
 });

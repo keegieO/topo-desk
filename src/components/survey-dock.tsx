@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LevelsPanel } from "@/components/levels-panel";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBook, type RightTab } from "@/lib/store";
+import { View3DToolbar } from "@/components/view-3d";
 import { useJobs } from "@/lib/jobs";
 import { buildChains, chainVertices } from "@/lib/chains";
 import { runQa, type QaIssue } from "@/lib/qa";
@@ -248,13 +249,14 @@ function TerrainPanel() {
   const setContourInterval = useBook((s) => s.setContourInterval);
   const buildTerrain = useBook((s) => s.buildTerrain);
   const shots = useBook((s) => s.shots);
+  const [show3d, setShow3d] = useState(false);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-border px-3 py-2">
         <p className="text-sm font-medium">Terrain model</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Builds when the book opens. Breaklines hold the surface. Pipe inverts stay off it.
+          Builds when the book opens. GeoLine Solutionss hold the surface. Pipe inverts stay off it.
         </p>
       </div>
       <div className="flex flex-col gap-3 px-3 py-3">
@@ -269,9 +271,16 @@ function TerrainPanel() {
             onChange={(e) => setContourInterval(Number(e.target.value) || 1)}
           />
         </div>
-        <Button type="button" size="sm" onClick={() => buildTerrain()} disabled={shots.length < 3}>
-          Rebuild terrain
-        </Button>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" onClick={() => buildTerrain()} disabled={shots.length < 3}>
+            Rebuild terrain
+          </Button>
+          {terrain && (
+            <Button type="button" size="sm" variant="outline" onClick={() => setShow3d(true)}>
+              View 3D
+            </Button>
+          )}
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={contoursOn} onChange={(e) => setContoursOn(e.target.checked)} />
           Show contours
@@ -286,6 +295,15 @@ function TerrainPanel() {
           <p className="text-xs text-muted-foreground">No surface yet. Build terrain to contour the survey.</p>
         )}
       </div>
+
+      {/* 3D Terrain modal overlay */}
+      {show3d && terrain && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl h-[min(85vh,700px)] rounded-lg overflow-hidden shadow-2xl border border-white/10">
+            <View3DToolbar model={terrain} onClose={() => setShow3d(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

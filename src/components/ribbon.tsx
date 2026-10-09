@@ -11,6 +11,7 @@ import {
   Table2,
   Layers,
   BookOpen,
+  FolderOpen,
   PanelLeft,
   PanelRight,
   List,
@@ -209,7 +210,7 @@ export function Ribbon({
         county: job?.county || "",
         crs: job?.crs || "",
         date: job?.survey?.date || "",
-        firm: "Breakline",
+        firm: "GeoLine Solutions",
         shots,
         chains,
         leaders: useBook.getState().leaders,
@@ -432,6 +433,13 @@ export function Ribbon({
         >
           <BookOpen className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Library</span>
+        </Link>
+        <Link
+          to="/projects"
+          className="inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-foreground hover:bg-accent"
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Projects</span>
         </Link>
         </div>
 
