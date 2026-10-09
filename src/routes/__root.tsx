@@ -8,9 +8,15 @@ import appCss from "../styles.css?url";
 const APP_NAME = "GeoLine Solutions";
 
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
-  const { getSessionUser } = await import("@/lib/auth/verify.server");
-  const u = await getSessionUser();
-  return u ? { id: u.id, email: u.email } : null;
+  try {
+    const { getSessionUser } = await import("@/lib/auth/verify.server");
+    const u = await getSessionUser();
+    return u ? { id: u.id, email: u.email } : null;
+  } catch {
+    // Session fetch failure (DB not configured, network error, etc.) degrades
+    // gracefully to "not signed in" rather than crashing the page load.
+    return null;
+  }
 });
 
 export const Route = createRootRoute({
