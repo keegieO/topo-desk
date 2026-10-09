@@ -57,7 +57,6 @@ const authDisabled = env("VITE_AUTH_ENABLED") === "false";
 /** True when auth is active (real sessions enforced). */
 export const authConfigured = !authDisabled;
 
-const explicitBaseURL = env("BETTER_AUTH_URL");
 // Local `npm run dev` (port 8080 contract).
 const LOCAL_DEV_ORIGINS: string[] = [
   "http://localhost:8080",
@@ -65,19 +64,47 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://[::1]:8080",
 ];
 const previewAllowedHosts: string[] = [...PREVIEW_ALLOWED_HOSTS];
-const baseURL = explicitBaseURL ?? {
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
-  protocol: "auto" as const,
-  fallback: "http://localhost:8080",
-};
 
-const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
-  : [
-      ...previewAllowedHosts,
-      ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
-      ...LOCAL_DEV_ORIGINS,
-    ];
+// Vercel injects VERCEL_URL (production) and VERCEL_BRANCH_URL (preview) automatically —
+// no manual env var needed. BETTER_AUTH_URL can still override everything.
+function vercelOrigins(): string[] {
+  const origins: string[] = [];
+  // VERCEL_URL is the canonical deployment URL (e.g. topo-desk-emfn.vercel.app)
+  const vercelUrl = env("VERCEL_URL");
+  if (vercelUrl) origins.push(`https://${vercelUrl}`);
+  // VERCEL_BRANCH_URL covers preview deployments per branch
+  const branchUrl = env("VERCEL_BRANCH_URL");
+  if (branchUrl) origins.push(`https://${branchUrl}`);
+  // VERCEL_PROJECT_PRODUCTION_URL is stable across deploys
+  const prodUrl = env("VERCEL_PROJECT_PRODUCTION_URL");
+  if (prodUrl) origins.push(`https://${prodUrl}`);
+  return origins;
+}
+
+const explicitBaseURL = env("BETTER_AUTH_URL");
+const detectedVercelOrigins = vercelOrigins();
+
+const baseURL = explicitBaseURL
+  // Prefer explicit override
+  ? explicitBaseURL
+  // On Vercel, use the canonical URL so Better Auth knows its own base
+  : detectedVercelOrigins[0] ?? {
+      allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
+      protocol: "auto" as const,
+      fallback: "http://localhost:8080",
+    };
+
+const trustedOrigins: string[] = [
+  // Always trust local dev
+  ...LOCAL_DEV_ORIGINS,
+  // Trust all Vercel deployment URLs (auto-injected, no manual config needed)
+  ...detectedVercelOrigins,
+  // Trust Grok sandbox preview hosts
+  ...previewAllowedHosts,
+  ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
+  // Trust explicit override if set
+  ...(explicitBaseURL ? [explicitBaseURL] : []),
+];
 
 const databaseUrl = env("DATABASE_URL");
 
