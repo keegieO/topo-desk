@@ -32,6 +32,9 @@ const TABS: { id: RightTab; label: string }[] = [
   { id: "cogo", label: "COGO" },
   { id: "profile", label: "Profile" },
   { id: "pts", label: "Pts" },
+  { id: "eleminfo", label: "Elem" },
+  { id: "recode", label: "Recode" },
+  { id: "layers", label: "Layers" },
   { id: "qa", label: "QA" },
   { id: "sheet", label: "Sheet" },
   { id: "details", label: "Book" },
@@ -73,6 +76,9 @@ export function SurveyDock() {
         {tab === "cogo" ? <CogoPanel /> : null}
         {tab === "profile" ? <ProfilePanel /> : null}
         {tab === "pts" ? <PtEditorPanel /> : null}
+        {tab === "eleminfo" ? <ElemInfoPanel /> : null}
+        {tab === "recode" ? <BatchRecodePanel /> : null}
+        {tab === "layers" ? <LayerStandardsPanel /> : null}
         {tab === "qa" ? <QaPanel /> : null}
         {tab === "sheet" ? <SheetPanel /> : null}
         {tab === "details" ? <DetailsPanel /> : null}
@@ -1477,4 +1483,582 @@ function lengthOf(pts: { n: number; e: number }[]): number {
   let d = 0;
   for (let i = 1; i < pts.length; i++) d += dist2d(pts[i - 1], pts[i]);
   return d;
+}
+
+// ---------------------------------------------------------------------------
+// Element Info Panel — MicroStation-style full attributes for selected point
+// ---------------------------------------------------------------------------
+function ElemInfoPanel() {
+  const shots = useBook((s) => s.shots);
+  const selectedUid = useBook((s) => s.selectedUid);
+  const updateShot = useBook((s) => s.updateShot);
+  const remaps = useBook((s) => s.remaps);
+  const focusOn = useBook((s) => s.focusOn);
+  const setRightTab = useBook((s) => s.setRightTab);
+  const isolated = useBook((s) => s.isolated);
+  const isolate = useBook((s) => s.isolate);
+
+  const shot = shots.find((s) => s.uid === selectedUid);
+
+  const [edit, setEdit] = useState<{
+    point: string; northing: string; easting: string; elevation: string; description: string;
+  } | null>(null);
+
+  // Whenever selected shot changes, reset inline edit
+  useMemo(() => { setEdit(null); }, [selectedUid]);
+
+  if (!shot) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-muted-foreground">
+        <p>No element selected.</p>
+        <p className="text-[0.6875rem]">Click a point on the map or select one in the Pts table.</p>
+      </div>
+    );
+  }
+
+  const feat = resolveFeature(shot, remaps);
+
+  function startEdit() {
+    setEdit({
+      point: shot!.point,
+      northing: shot!.northing.toFixed(4),
+      easting: shot!.easting.toFixed(4),
+      elevation: shot!.elevation.toFixed(4),
+      description: shot!.description,
+    });
+  }
+
+  function commitEdit() {
+    if (!edit) return;
+    const n = parseFloat(edit.northing);
+    const e = parseFloat(edit.easting);
+    const z = parseFloat(edit.elevation);
+    if (isNaN(n) || isNaN(e) || isNaN(z)) {
+      toast.error("Invalid coordinate");
+      return;
+    }
+    updateShot(shot!.uid, { point: edit.point, northing: n, easting: e, elevation: z, description: edit.description });
+    setEdit(null);
+    toast.success(`Point ${edit.point} updated`);
+  }
+
+  const isIsolated = isolated === shot.codeToken.toUpperCase();
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="flex flex-col gap-3 px-3 py-3">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold font-mono">Pt {shot.point}</p>
+          <div className="flex gap-1">
+            <Tiny onClick={startEdit} label="Edit" />
+            <Tiny
+              onClick={() => { focusOn(shot.codeToken); setRightTab("levels"); }}
+              label="Go to level"
+            />
+            <Tiny
+              onClick={() => isolate(isIsolated ? null : shot.codeToken)}
+              label={isIsolated ? "Show all" : "Isolate"}
+            />
+          </div>
+        </div>
+
+        {/* Element type badge */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="default" className="font-mono text-[0.6875rem]">
+            {shot.codeToken}
+          </Badge>
+          {feat ? (
+            <span className="text-[0.6875rem] text-muted-foreground">{feat.name}</span>
+          ) : (
+            <span className="text-[0.6875rem] text-muted-foreground italic">Unmatched code</span>
+          )}
+          {feat?.cat ? (
+            <Badge variant="outline" className="font-mono text-[0.625rem]">{feat.cat}</Badge>
+          ) : null}
+        </div>
+
+        {/* Coordinates */}
+        <div className="rounded-md border border-border p-2 font-mono text-[0.6875rem]">
+          <p className="mb-1 font-sans text-xs font-medium text-muted-foreground">Coordinates</p>
+          {edit ? (
+            <div className="flex flex-col gap-1.5">
+              <div className="grid grid-cols-[5rem_1fr] items-center gap-1">
+                <span className="text-muted-foreground">Point</span>
+                <input
+                  className="rounded border border-input bg-background px-1.5 py-0.5 font-mono text-[0.6875rem]"
+                  value={edit.point}
+                  onChange={(e) => setEdit((p) => p && ({ ...p, point: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-[5rem_1fr] items-center gap-1">
+                <span className="text-muted-foreground">Northing</span>
+                <input
+                  className="rounded border border-input bg-background px-1.5 py-0.5 text-right font-mono text-[0.6875rem]"
+                  value={edit.northing}
+                  onChange={(e) => setEdit((p) => p && ({ ...p, northing: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-[5rem_1fr] items-center gap-1">
+                <span className="text-muted-foreground">Easting</span>
+                <input
+                  className="rounded border border-input bg-background px-1.5 py-0.5 text-right font-mono text-[0.6875rem]"
+                  value={edit.easting}
+                  onChange={(e) => setEdit((p) => p && ({ ...p, easting: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-[5rem_1fr] items-center gap-1">
+                <span className="text-muted-foreground">Elevation</span>
+                <input
+                  className="rounded border border-input bg-background px-1.5 py-0.5 text-right font-mono text-[0.6875rem]"
+                  value={edit.elevation}
+                  onChange={(e) => setEdit((p) => p && ({ ...p, elevation: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-[5rem_1fr] items-center gap-1">
+                <span className="text-muted-foreground">Description</span>
+                <input
+                  className="rounded border border-input bg-background px-1.5 py-0.5 font-mono text-[0.6875rem]"
+                  value={edit.description}
+                  onChange={(e) => setEdit((p) => p && ({ ...p, description: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-1 pt-1">
+                <Button size="sm" className="h-6 text-xs" onClick={commitEdit}>Apply</Button>
+                <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => setEdit(null)}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <table className="w-full">
+              <tbody>
+                {[
+                  ["Point", shot.point],
+                  ["Northing", shot.northing.toFixed(4)],
+                  ["Easting", shot.easting.toFixed(4)],
+                  ["Elevation", `${shot.elevation.toFixed(4)} ft`],
+                  ["Description", shot.description || "—"],
+                  ["Remainder", shot.remainder || "—"],
+                ].map(([label, value]) => (
+                  <tr key={label} className="border-b border-border/50">
+                    <td className="py-0.5 pr-2 text-muted-foreground">{label}</td>
+                    <td className="py-0.5 text-right">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Feature info */}
+        {feat ? (
+          <div className="rounded-md border border-border p-2 font-mono text-[0.6875rem]">
+            <p className="mb-1 font-sans text-xs font-medium text-muted-foreground">Feature library</p>
+            <table className="w-full">
+              <tbody>
+                {[
+                  ["ID", feat.id],
+                  ["Name", feat.name],
+                  ["Category", feat.cat],
+                  ["Kind", feat.kind],
+                  ["Point sym", feat.pointSym || "—"],
+                  ["Linear sym", feat.linearSym || "—"],
+                  ["Description", feat.desc || "—"],
+                ].map(([label, value]) => (
+                  <tr key={label} className="border-b border-border/50">
+                    <td className="py-0.5 pr-2 text-muted-foreground">{label}</td>
+                    <td className="py-0.5 text-right">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {/* QA flags on this point */}
+        {shot.issues?.length ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2">
+            <p className="mb-1 text-xs font-medium text-destructive">QA flags</p>
+            <ul className="space-y-0.5">
+              {shot.issues.map((issue, i) => (
+                <li key={i} className="text-[0.6875rem] text-destructive">{issue}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {/* Shot index context */}
+        <p className="text-[0.625rem] text-muted-foreground font-mono">
+          Row {shot.rowIndex + 1} · uid {shot.uid} · {shots.length} total pts
+        </p>
+      </div>
+    </ScrollArea>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Batch Recode Panel — mass-recode all points of one code to another
+// ---------------------------------------------------------------------------
+function BatchRecodePanel() {
+  const shots = useBook((s) => s.shots);
+  const remaps = useBook((s) => s.remaps);
+  const batchRecode = useBook((s) => s.batchRecode);
+  const recodeShot = useBook((s) => s.recodeShot);
+  const isolated = useBook((s) => s.isolated);
+  const isolate = useBook((s) => s.isolate);
+
+  const [fromCode, setFromCode] = useState("");
+  const [toCode, setToCode] = useState("");
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
+  // Aggregate codes from shots
+  const codeCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of shots) {
+      const c = s.codeToken.toUpperCase();
+      map.set(c, (map.get(c) ?? 0) + 1);
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  }, [shots]);
+
+  // Preview — how many shots would be recoded
+  const previewCount = useMemo(() => {
+    const from = fromCode.trim().toUpperCase();
+    if (!from) return 0;
+    return shots.filter((s) => s.codeToken.toUpperCase() === from).length;
+  }, [shots, fromCode]);
+
+  function doRecode() {
+    const from = fromCode.trim().toUpperCase();
+    const to = toCode.trim().toUpperCase();
+    if (!from || !to) { toast.error("Enter both From and To codes"); return; }
+    if (from === to) { toast.error("From and To are the same"); return; }
+    const n = batchRecode(from, to);
+    if (n === 0) {
+      toast.message(`No points with code ${from} found`);
+      setLastResult(null);
+    } else {
+      toast.success(`Recoded ${n} point${n !== 1 ? "s" : ""} from ${from} → ${to}`);
+      setLastResult(`${n} pts ${from} → ${to}`);
+      setFromCode(to);
+      setToCode("");
+    }
+  }
+
+  // Select a single shot to recode individually
+  const selectedUid = useBook((s) => s.selectedUid);
+  const selectedShot = shots.find((s) => s.uid === selectedUid);
+
+  function recodeSingle(to: string) {
+    if (!selectedShot || !to.trim()) return;
+    recodeShot(selectedShot.uid, to.trim().toUpperCase());
+    toast.success(`Recoded Pt ${selectedShot.point} → ${to.trim().toUpperCase()}`);
+  }
+
+  const [singleCode, setSingleCode] = useState("");
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="flex flex-col gap-4 px-3 py-3">
+        <p className="text-sm font-medium">Batch Recode</p>
+
+        {/* Code inventory */}
+        <div className="rounded-md border border-border">
+          <div className="flex items-center justify-between border-b border-border px-2 py-1.5">
+            <p className="text-xs font-medium">Code inventory ({codeCounts.length})</p>
+            {isolated ? (
+              <Tiny onClick={() => isolate(null)} label="Show all" />
+            ) : null}
+          </div>
+          <div className="max-h-40 overflow-auto">
+            {codeCounts.map(([code, count]) => {
+              const feat = resolveFeature({ codeToken: code, description: code, remainder: "", matchId: null, uid: "", rowIndex: 0, point: "", northing: 0, easting: 0, elevation: 0, issues: [] }, remaps);
+              const isIso = isolated === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => { setFromCode(code); }}
+                  onDoubleClick={() => isolate(isIso ? null : code)}
+                  title="Click to use as From code · Double-click to isolate"
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 border-b border-border/50 px-2 py-1 text-left text-[0.6875rem] hover:bg-accent",
+                    fromCode === code && "bg-accent",
+                    isIso && "ring-1 ring-inset ring-primary",
+                  )}
+                >
+                  <span className="font-mono font-medium">{code}</span>
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    {feat ? <span className="max-w-[8rem] truncate">{feat.name}</span> : null}
+                    <span>{count} pts</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Batch recode form */}
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="recode-from" className="text-xs">From code</Label>
+              <Input
+                id="recode-from"
+                value={fromCode}
+                onChange={(e) => setFromCode(e.target.value.toUpperCase())}
+                placeholder="EP"
+                className="h-7 font-mono text-xs uppercase"
+              />
+            </div>
+            <span className="mb-1 text-sm text-muted-foreground">→</span>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="recode-to" className="text-xs">To code</Label>
+              <Input
+                id="recode-to"
+                value={toCode}
+                onChange={(e) => setToCode(e.target.value.toUpperCase())}
+                placeholder="EP2"
+                className="h-7 font-mono text-xs uppercase"
+              />
+            </div>
+          </div>
+          {previewCount > 0 ? (
+            <p className="text-[0.6875rem] text-muted-foreground">
+              Will recode <span className="font-semibold text-foreground">{previewCount}</span> point{previewCount !== 1 ? "s" : ""}
+            </p>
+          ) : fromCode ? (
+            <p className="text-[0.6875rem] text-destructive">No points with code {fromCode}</p>
+          ) : null}
+          <Button size="sm" onClick={doRecode} disabled={!fromCode || !toCode} className="w-full">
+            Recode {previewCount > 0 ? `(${previewCount} pts)` : ""}
+          </Button>
+          {lastResult ? (
+            <p className="font-mono text-[0.625rem] text-ok">✓ {lastResult}</p>
+          ) : null}
+        </div>
+
+        {/* Single-shot recode */}
+        {selectedShot ? (
+          <div className="flex flex-col gap-2 rounded-md border border-border p-2">
+            <p className="text-xs font-medium">
+              Selected: Pt {selectedShot.point} · <span className="font-mono">{selectedShot.codeToken}</span>
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={singleCode}
+                onChange={(e) => setSingleCode(e.target.value.toUpperCase())}
+                placeholder="New code"
+                className="h-7 flex-1 font-mono text-xs uppercase"
+              />
+              <Button size="sm" className="h-7" onClick={() => { recodeSingle(singleCode); setSingleCode(""); }}>
+                Apply
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-[0.6875rem] text-muted-foreground">Select a point to recode it individually.</p>
+        )}
+      </div>
+    </ScrollArea>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DXF Layer Standards Panel — view/configure layer names, colors, weights
+// ---------------------------------------------------------------------------
+
+const DEFAULT_LAYERS = [
+  { name: "BOUNDARY",       color: 1,  weight: 2, desc: "Property / boundary lines",       group: "Boundary" },
+  { name: "EASEMENT",       color: 4,  weight: 1, desc: "Easements & ROW",                  group: "Boundary" },
+  { name: "ROW",            color: 4,  weight: 2, desc: "Right-of-way lines",                group: "Boundary" },
+  { name: "TOPO-CONTOUR",   color: 3,  weight: 1, desc: "Major contour lines (5 ft)",        group: "Topo" },
+  { name: "TOPO-INDEX",     color: 3,  weight: 2, desc: "Index contour lines (25 ft)",       group: "Topo" },
+  { name: "TOPO-MINOR",     color: 3,  weight: 0, desc: "Minor contour lines (1 ft)",        group: "Topo" },
+  { name: "EP",             color: 7,  weight: 1, desc: "Edge of pavement",                  group: "Road" },
+  { name: "CL",             color: 5,  weight: 1, desc: "Road centerline",                   group: "Road" },
+  { name: "BACK-CURB",      color: 7,  weight: 0, desc: "Back of curb",                      group: "Road" },
+  { name: "GUARD-RAIL",     color: 6,  weight: 1, desc: "Guardrail / barrier",               group: "Road" },
+  { name: "DRAINAGE",       color: 4,  weight: 1, desc: "Drainage features & swales",        group: "Drainage" },
+  { name: "DITCH",          color: 4,  weight: 0, desc: "Ditch centerline",                  group: "Drainage" },
+  { name: "CULVERT",        color: 4,  weight: 1, desc: "Culvert pipes",                     group: "Drainage" },
+  { name: "INLET",          color: 4,  weight: 0, desc: "Storm inlets",                      group: "Drainage" },
+  { name: "TREE-DL",        color: 3,  weight: 1, desc: "Tree drip lines",                   group: "Veg" },
+  { name: "TREE-PT",        color: 3,  weight: 0, desc: "Tree points",                       group: "Veg" },
+  { name: "FENCE",          color: 6,  weight: 1, desc: "Fence lines",                       group: "Struct" },
+  { name: "BLDG",           color: 7,  weight: 2, desc: "Building outlines",                 group: "Struct" },
+  { name: "WALL",           color: 7,  weight: 1, desc: "Retaining / concrete walls",        group: "Struct" },
+  { name: "UTILITY-OHE",    color: 2,  weight: 0, desc: "Overhead electric",                 group: "Utility" },
+  { name: "UTILITY-UGE",    color: 2,  weight: 0, desc: "Underground electric",              group: "Utility" },
+  { name: "UTILITY-GAS",    color: 1,  weight: 0, desc: "Gas lines",                         group: "Utility" },
+  { name: "UTILITY-SAN",    color: 5,  weight: 1, desc: "Sanitary sewer",                    group: "Utility" },
+  { name: "UTILITY-STORM",  color: 4,  weight: 1, desc: "Storm sewer",                       group: "Utility" },
+  { name: "UTILITY-WATER",  color: 5,  weight: 1, desc: "Water main",                        group: "Utility" },
+  { name: "CTRL-PT",        color: 2,  weight: 2, desc: "Control points (benchmarks, traverse)", group: "Control" },
+  { name: "CTRL-MON",       color: 2,  weight: 1, desc: "Monuments",                         group: "Control" },
+  { name: "SURVEY-PT",      color: 7,  weight: 0, desc: "Shot points (all other topo)",      group: "Survey" },
+  { name: "SURVEY-LABELS",  color: 7,  weight: 0, desc: "Point labels & numbers",            group: "Survey" },
+  { name: "SURVEY-LEADERS", color: 7,  weight: 0, desc: "Leader notes",                      group: "Survey" },
+] as const;
+
+const ACI_NAMES: Record<number, string> = {
+  1: "Red", 2: "Yellow", 3: "Green", 4: "Cyan", 5: "Blue", 6: "Magenta", 7: "White",
+};
+const ACI_HEX: Record<number, string> = {
+  1: "#ff0000", 2: "#ffff00", 3: "#00ff00", 4: "#00ffff", 5: "#0000ff", 6: "#ff00ff", 7: "#ffffff",
+};
+
+function LayerStandardsPanel() {
+  const [filter, setFilter] = useState("");
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+
+  const groups = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const l of DEFAULT_LAYERS) {
+      if (!seen.has(l.group)) { seen.add(l.group); out.push(l.group); }
+    }
+    return out;
+  }, []);
+
+  const visible = useMemo(() => {
+    const q = filter.toLowerCase();
+    return DEFAULT_LAYERS.filter((l) => {
+      if (activeGroup && l.group !== activeGroup) return false;
+      if (!q) return true;
+      return l.name.toLowerCase().includes(q) || l.desc.toLowerCase().includes(q);
+    });
+  }, [filter, activeGroup]);
+
+  function downloadLayerDxf() {
+    // Emit a DXF LAYER table that can be merged into any drawing
+    const lines = [
+      "0", "SECTION", "2", "TABLES",
+      "0", "TABLE", "2", "LAYER", "70", String(DEFAULT_LAYERS.length),
+      ...DEFAULT_LAYERS.flatMap((l) => [
+        "0", "LAYER",
+        "2", l.name,
+        "70", "0",
+        "62", String(l.color),
+        "6", "Continuous",
+        "370", String(l.weight),
+      ]),
+      "0", "ENDTAB",
+      "0", "ENDSEC",
+      "0", "EOF",
+    ];
+    const text = lines.join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "application/dxf" }));
+    a.download = "survey-layer-standards.dxf";
+    a.click();
+    toast.success("survey-layer-standards.dxf downloaded");
+  }
+
+  function downloadLayerCsv() {
+    const csv = ["Layer,Group,Color,Weight,Description",
+      ...DEFAULT_LAYERS.map((l) => `${l.name},${l.group},${l.color} (${ACI_NAMES[l.color] ?? l.color}),${l.weight},"${l.desc}"`),
+    ].join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "survey-layer-standards.csv";
+    a.click();
+    toast.success("survey-layer-standards.csv downloaded");
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Header */}
+      <div className="shrink-0 border-b border-border px-3 py-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">DXF Layer Standards</p>
+          <div className="flex gap-1">
+            <Tiny onClick={downloadLayerDxf} label="DXF ↓" />
+            <Tiny onClick={downloadLayerCsv} label="CSV ↓" />
+          </div>
+        </div>
+        <p className="mt-0.5 text-[0.6875rem] text-muted-foreground">
+          CADD naming per INDOT / FHWA convention · AutoCAD Color Index
+        </p>
+      </div>
+
+      {/* Group filter pills */}
+      <div className="flex shrink-0 flex-wrap gap-1 border-b border-border px-3 py-1.5">
+        <button
+          type="button"
+          onClick={() => setActiveGroup(null)}
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[0.6875rem]",
+            !activeGroup ? "bg-primary text-primary-foreground" : "border border-border hover:bg-accent",
+          )}
+        >
+          All
+        </button>
+        {groups.map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => setActiveGroup(activeGroup === g ? null : g)}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[0.6875rem]",
+              activeGroup === g ? "bg-primary text-primary-foreground" : "border border-border hover:bg-accent",
+            )}
+          >
+            {g}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="shrink-0 px-3 py-1.5 border-b border-border">
+        <Input
+          placeholder="Filter layers…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="h-7 text-xs"
+        />
+      </div>
+
+      {/* Layer table */}
+      <ScrollArea className="min-h-0 flex-1">
+        <table className="w-full font-mono text-[0.625rem]">
+          <thead className="sticky top-0 z-10 bg-card">
+            <tr className="border-b border-border">
+              <th className="px-2 py-1 text-left">Layer name</th>
+              <th className="px-2 py-1 text-center" title="AutoCAD Color Index">ACI</th>
+              <th className="px-2 py-1 text-center" title="Line weight (mm × 100)">Wt</th>
+              <th className="px-2 py-1 text-left hidden sm:table-cell">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((l) => (
+              <tr key={l.name} className="border-b border-border/50 hover:bg-accent/50">
+                <td className="px-2 py-1 font-medium">{l.name}</td>
+                <td className="px-2 py-1">
+                  <span className="flex items-center justify-center gap-1">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-sm border border-border"
+                      style={{ background: ACI_HEX[l.color] ?? "#888" }}
+                    />
+                    <span className="text-muted-foreground">{l.color}</span>
+                  </span>
+                </td>
+                <td className="px-2 py-1 text-center text-muted-foreground">{l.weight}</td>
+                <td className="px-2 py-1 text-muted-foreground hidden sm:table-cell">{l.desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!visible.length ? (
+          <p className="px-3 py-6 text-center text-sm text-muted-foreground">No layers match.</p>
+        ) : null}
+      </ScrollArea>
+
+      {/* Footer */}
+      <div className="shrink-0 border-t border-border px-3 py-1.5">
+        <p className="font-mono text-[0.625rem] text-muted-foreground">
+          {DEFAULT_LAYERS.length} standard layers · Color = AutoCAD ACI · Wt = lineweight index
+        </p>
+      </div>
+    </div>
+  );
 }

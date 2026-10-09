@@ -40,7 +40,7 @@ export type CadTool =
   | "split"
   | "text";
 export type MapMode = "off" | "aerial" | "hybrid" | "roads";
-export type RightTab = "levels" | "linear" | "terrain" | "cogo" | "qa" | "details" | "sheet" | "profile" | "pts";
+export type RightTab = "levels" | "linear" | "terrain" | "cogo" | "qa" | "details" | "sheet" | "profile" | "pts" | "recode" | "eleminfo" | "layers";
 
 /** Editable title-block fields for plan sheets and ORD package. */
 export type SheetMeta = {
@@ -183,6 +183,8 @@ type State = {
   autoNotes: () => number;
   editFeature: (uids: string[], fromCode: string, patch: { code?: string; note?: string; description?: string }) => void;
   selectLeader: (id: string | null) => void;
+  /** Batch-recode all shots whose codeToken matches fromCode to toCode, preserving remainder. */
+  batchRecode: (fromCode: string, toCode: string) => number;
   viewCmd: { nonce: number; fit?: boolean; n?: number; e?: number } | null;
   locate: (n: number, e: number) => void;
   fitView: () => void;
@@ -949,6 +951,29 @@ export const useBook = create<State>()(
           };
         }),
       selectLeader: (id) => set({ selectedLeaderId: id, selectedUid: null, selectedLineId: null }),
+      batchRecode: (fromCode, toCode) => {
+        const from = fromCode.trim().toUpperCase();
+        const to = toCode.trim().toUpperCase();
+        if (!from || !to || from === to) return 0;
+        let count = 0;
+        set((s) => {
+          const shots = s.shots.map((sh) => {
+            if (sh.codeToken.toUpperCase() !== from) return sh;
+            const description = sh.remainder ? `${to} ${sh.remainder}` : to;
+            count++;
+            return relabel(sh, description);
+          });
+          if (count === 0) return {};
+          return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
+            shots,
+          };
+        });
+        return count;
+      },
       setSheetMeta: (patch) => set((s) => ({ sheetMeta: { ...s.sheetMeta, ...patch } })),
       locate: (n, e) =>
         set((s) => ({ viewCmd: { nonce: (s.viewCmd?.nonce ?? 0) + 1, n, e } })),
