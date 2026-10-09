@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   FileUp,
@@ -34,6 +34,8 @@ import {
   MoveHorizontal,
   Save,
   Globe,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -78,7 +80,29 @@ export function Ribbon({
   const inputRef = useRef<HTMLInputElement>(null);
   const appendRef = useRef<HTMLInputElement>(null);
   const shots = useBook((s) => s.shots);
+  const canUndo = useBook((s) => s.canUndo);
+  const canRedo = useBook((s) => s.canRedo);
+  const undo = useBook((s) => s.undo);
+  const redo = useBook((s) => s.redo);
   const fileName = useBook((s) => s.fileName);
+
+  // Global Ctrl+Z / Ctrl+Y keyboard shortcuts
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const inInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (inInput) return;
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") {
+        e.preventDefault();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
+        e.preventDefault();
+        redo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo]);
   const order = useBook((s) => s.order);
   const remaps = useBook((s) => s.remaps);
   const templateId = useBook((s) => s.templateId);
@@ -445,6 +469,32 @@ export function Ribbon({
         </div>
 
         <div className={tab === "Home" ? "contents" : "hidden"}>
+        <span className="px-1 text-[0.625rem] uppercase tracking-[0.14em] text-muted-foreground">Edit</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-9 gap-1.5 px-2 text-xs"
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Undo</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-9 gap-1.5 px-2 text-xs"
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Y)"
+        >
+          <Redo2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Redo</span>
+        </Button>
+        <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
         <span className="px-1 text-[0.625rem] uppercase tracking-[0.14em] text-muted-foreground">Selection</span>
         <ToolBtn id="select" tool={tool} setTool={setTool} icon={<MousePointer2 />} label="Element" />
         <ToolBtn id="move" tool={tool} setTool={setTool} icon={<Move />} label="Move" />

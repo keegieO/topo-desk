@@ -16,6 +16,16 @@ import { replaceCode, withNote } from "./fieldcode";
 
 type Filter = "all" | "matched" | "unmatched";
 
+/** Snapshot of the mutable drawing state for undo/redo. */
+type DrawSnapshot = {
+  shots: LabeledShot[];
+  userLines: UserLine[];
+  leaders: Leader[];
+  remaps: Record<string, string>;
+};
+
+const MAX_HISTORY = 50;
+
 export type CadTool =
   | "select"
   | "move"
@@ -176,6 +186,13 @@ type State = {
   viewCmd: { nonce: number; fit?: boolean; n?: number; e?: number } | null;
   locate: (n: number, e: number) => void;
   fitView: () => void;
+  /** Undo/redo history (not persisted). */
+  _past: DrawSnapshot[];
+  _future: DrawSnapshot[];
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 };
 
 function relabel(shot: LabeledShot, description: string): LabeledShot {
@@ -274,6 +291,10 @@ const uiDefaults = {
     scale: "auto",
     sheetOf: "",
   } as SheetMeta,
+  _past: [] as DrawSnapshot[],
+  _future: [] as DrawSnapshot[],
+  canUndo: false,
+  canRedo: false,
 };
 
 let lineSeq = 1;
@@ -281,6 +302,17 @@ let shotSeq = 1;
 
 function nextLineId() {
   return `x${lineSeq++}`;
+}
+
+/** Capture a snapshot of mutable drawing state. */
+function snap(s: { shots: LabeledShot[]; userLines: UserLine[]; leaders: Leader[]; remaps: Record<string, string> }): DrawSnapshot {
+  return { shots: s.shots, userLines: s.userLines, leaders: s.leaders, remaps: s.remaps };
+}
+
+/** Returns updated _past / _future arrays when pushing a new snapshot. */
+function pushHistory(past: DrawSnapshot[], current: DrawSnapshot): DrawSnapshot[] {
+  const next = [...past, current];
+  return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
 }
 
 function mergeSurvey(base: SurveyMeta, patch: Partial<SurveyMeta> | undefined): SurveyMeta {
@@ -528,6 +560,10 @@ export const useBook = create<State>()(
       setActiveCode: (code) => set({ activeCode: code ? code.toUpperCase() : null }),
       moveShot: (uid, n, e, z) =>
         set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           shots: s.shots.map((sh) =>
             sh.uid === uid
               ? { ...sh, northing: n, easting: e, elevation: z ?? sh.elevation }
@@ -539,6 +575,10 @@ export const useBook = create<State>()(
           const next = code.trim().toUpperCase();
           if (!next) return {};
           return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
             shots: s.shots.map((sh) => {
               if (sh.uid !== uid) return sh;
               const description = sh.remainder ? `${next} ${sh.remainder}` : next;
@@ -568,14 +608,29 @@ export const useBook = create<State>()(
             },
             alpha,
           );
-          return { shots: [...s.shots, shot], selectedUid: shot.uid };
+          return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
+            shots: [...s.shots, shot],
+            selectedUid: shot.uid,
+          };
         }),
       setShotDesc: (uid, description) =>
         set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           shots: s.shots.map((sh) => (sh.uid === uid ? relabel(sh, description) : sh)),
         })),
       updateShot: (uid, patch) =>
         set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           shots: s.shots.map((sh) => {
             if (sh.uid !== uid) return sh;
             const next = { ...sh, ...patch };
@@ -596,25 +651,48 @@ export const useBook = create<State>()(
             closed: s.tool === "shape",
             source: "extract",
           };
-          return { userLines: [...s.userLines, line], draft: [], selectedLineId: line.id };
+          return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
+            userLines: [...s.userLines, line],
+            draft: [],
+            selectedLineId: line.id,
+          };
         }),
       cancelDraft: () => set({ draft: [], measure: [], joinPending: null }),
       deleteSelected: () =>
         set((s) => {
           if (s.selectedLeaderId) {
             return {
+              _past: pushHistory(s._past, snap(s)),
+              _future: [],
+              canUndo: true,
+              canRedo: false,
               leaders: s.leaders.filter((l) => l.id !== s.selectedLeaderId),
               selectedLeaderId: null,
             };
           }
           if (s.selectedLineId && s.userLines.some((l) => l.id === s.selectedLineId)) {
             return {
+              _past: pushHistory(s._past, snap(s)),
+              _future: [],
+              canUndo: true,
+              canRedo: false,
               userLines: s.userLines.filter((l) => l.id !== s.selectedLineId),
               selectedLineId: null,
             };
           }
           if (s.selectedUid) {
-            return { shots: s.shots.filter((sh) => sh.uid !== s.selectedUid), selectedUid: null };
+            return {
+              _past: pushHistory(s._past, snap(s)),
+              _future: [],
+              canUndo: true,
+              canRedo: false,
+              shots: s.shots.filter((sh) => sh.uid !== s.selectedUid),
+              selectedUid: null,
+            };
           }
           return {};
         }),
@@ -629,14 +707,26 @@ export const useBook = create<State>()(
         }),
       updateUserLine: (id, pts) =>
         set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: s.userLines.map((l) => (l.id === id ? { ...l, pts } : l)),
         })),
       setLineClosed: (id, closed) =>
         set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: s.userLines.map((l) => (l.id === id ? { ...l, closed } : l)),
         })),
       reverseUserLine: (id) =>
         set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: s.userLines.map((l) => (l.id === id ? { ...l, pts: [...l.pts].reverse() } : l)),
         })),
       closeSurveyChain: (shotUids) =>
@@ -644,6 +734,10 @@ export const useBook = create<State>()(
           if (!shotUids.length) return {};
           const last = shotUids[shotUids.length - 1];
           return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
             shots: s.shots.map((sh) => {
               if (sh.uid !== last) return sh;
               if (/\bCLS\b|\bCLOSE\b/i.test(sh.remainder)) return sh;
@@ -660,6 +754,10 @@ export const useBook = create<State>()(
         const extra = extractAllLines(s.shots, s.remaps, s.userLines, "x");
         if (!extra.length) return 0;
         set({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: [...s.userLines, ...extra],
           rightTab: "linear",
           rightOpen: true,
@@ -670,7 +768,14 @@ export const useBook = create<State>()(
         const s = get();
         const line = extractChainById(s.shots, s.remaps, chainId, s.userLines, nextLineId());
         if (!line) return false;
-        set({ userLines: [...s.userLines, line], selectedLineId: line.id });
+        set({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
+          userLines: [...s.userLines, line],
+          selectedLineId: line.id,
+        });
         return true;
       },
       joinLines: (aId, bId) => {
@@ -680,6 +785,10 @@ export const useBook = create<State>()(
         if (!a || !b || a.id === b.id) return false;
         const joined = joinUserLines(a, b, nextLineId());
         set({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: s.userLines.filter((l) => l.id !== aId && l.id !== bId).concat(joined),
           selectedLineId: joined.id,
           joinPending: null,
@@ -694,6 +803,10 @@ export const useBook = create<State>()(
         const parts = splitUserLine(line, index, nextLineId(), nextLineId());
         if (!parts) return false;
         set({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: s.userLines.filter((l) => l.id !== lineId).concat(parts),
           selectedLineId: parts[0].id,
         });
@@ -706,6 +819,10 @@ export const useBook = create<State>()(
         const d = dist ?? s.offsetFt;
         const off = offsetUserLine(line, d, nextLineId());
         set({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: [...s.userLines, off],
           selectedLineId: off.id,
           cogo: { kind: "offset", dist: d },
@@ -719,6 +836,10 @@ export const useBook = create<State>()(
         const next = insertOnSegment(line.pts, n, e, z, 8);
         if (!next) return false;
         set({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           userLines: s.userLines.map((l) => (l.id === lineId ? { ...l, pts: next.map((p) => ({ n: p.n, e: p.e, z: p.z ?? z })) } : l)),
         });
         return true;
@@ -748,10 +869,22 @@ export const useBook = create<State>()(
       setTextTip: (v) => set({ textTip: v }),
       addLeader: (leader) =>
         set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
           leaders: [...s.leaders.filter((l) => l.id !== leader.id), { ...leader, source: leader.source ?? "user" }],
           textTip: null,
         })),
-      setLeaders: (leaders) => set({ leaders, textTip: null }),
+      setLeaders: (leaders) =>
+        set((s) => ({
+          _past: pushHistory(s._past, snap(s)),
+          _future: [],
+          canUndo: true,
+          canRedo: false,
+          leaders,
+          textTip: null,
+        })),
       autoNotes: () => {
         const s = get();
         const next = autoLeaders(s.shots, s.remaps);
@@ -772,7 +905,48 @@ export const useBook = create<State>()(
           });
           const manual = s.leaders.filter((l) => l.source === "user");
           const next = autoLeaders(shots, s.remaps);
-          return { shots, leaders: [...manual, ...next] };
+          return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
+            shots,
+            leaders: [...manual, ...next],
+          };
+        }),
+      undo: () =>
+        set((s) => {
+          if (!s._past.length) return {};
+          const prev = s._past[s._past.length - 1];
+          const newPast = s._past.slice(0, -1);
+          const currentSnap = snap(s);
+          return {
+            shots: prev.shots,
+            userLines: prev.userLines,
+            leaders: prev.leaders,
+            remaps: prev.remaps,
+            _past: newPast,
+            _future: [currentSnap, ...s._future].slice(0, MAX_HISTORY),
+            canUndo: newPast.length > 0,
+            canRedo: true,
+          };
+        }),
+      redo: () =>
+        set((s) => {
+          if (!s._future.length) return {};
+          const next = s._future[0];
+          const newFuture = s._future.slice(1);
+          const currentSnap = snap(s);
+          return {
+            shots: next.shots,
+            userLines: next.userLines,
+            leaders: next.leaders,
+            remaps: next.remaps,
+            _past: [...s._past, currentSnap].slice(-MAX_HISTORY),
+            _future: newFuture,
+            canUndo: true,
+            canRedo: newFuture.length > 0,
+          };
         }),
       selectLeader: (id) => set({ selectedLeaderId: id, selectedUid: null, selectedLineId: null }),
       setSheetMeta: (patch) => set((s) => ({ sheetMeta: { ...s.sheetMeta, ...patch } })),
