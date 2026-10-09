@@ -26,8 +26,11 @@ if (databaseConfigured && !authConfigured) {
   );
 }
 
-/** Dev fallback user id, used only when auth is disabled (VITE_AUTH_ENABLED=false). */
-export const DEV_USER_ID = "dev-user";
+/**
+ * Fixed owner id used when auth is disabled. All rows in the database are
+ * owned by this id — no login required, single-tenant.
+ */
+export const DEV_USER_ID = "owner";
 
 /**
  * Thrown by `requireUserId` when the caller has no valid session. Carries
@@ -83,12 +86,9 @@ export async function getSessionUser(
  */
 export async function requireUserId(bearerToken?: string): Promise<string> {
   if (!authConfigured && !gateIdentityEnabled()) {
-    if (databaseConfigured) {
-      throw new Error(
-        "Auth is disabled (VITE_AUTH_ENABLED=false) but DATABASE_URL is set — " +
-          "refusing to fall back to the shared dev user against a real database.",
-      );
-    }
+    // Auth is off — use the fixed single-tenant owner id regardless of whether
+    // a real database is configured. This is intentional: the app is deployed
+    // without accounts and all data is owned by one operator.
     return DEV_USER_ID;
   }
   const user = await getSessionUser(bearerToken);
