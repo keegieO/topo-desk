@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
+import { nitro } from "nitro/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -145,6 +146,8 @@ function authPopupPlugin(): Plugin {
 }
 
 // Port 8080 is the dev contract — Claude Code and local dev both use it.
+// Gate the Nitro Vercel-preset plugin on build/preview only — left on in dev
+// it opens a second dev-server port that breaks the single-port 8080 preview.
 export default defineConfig(({ command, isPreview }) => ({
   server: {
     host: "0.0.0.0",
@@ -162,6 +165,9 @@ export default defineConfig(({ command, isPreview }) => ({
     authPopupPlugin(),
     tailwindcss(),
     tanstackStart(),
+    ...(command === "build" || isPreview
+      ? nitro({ preset: "vercel", serverDir: "./server" })
+      : []),
     pgliteDataPlugin(),
     viteReact(),
   ],
