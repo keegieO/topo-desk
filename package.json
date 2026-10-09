@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "VITE_AUTH_ENABLED=false vite dev --host 0.0.0.0 --port 8080",
     "dev:auth": "VITE_AUTH_ENABLED=true vite dev --host 0.0.0.0 --port 8080",
-    "build": "vite build",
+    "build": "node scripts/migrate.mjs && vite build",
     "db:migrate": "node scripts/migrate.mjs",
     "build:dev": "VITE_AUTH_ENABLED=true vite build --mode development",
     "preview": "vite preview",

@@ -3,11 +3,9 @@
  * Deploy-time database migrator (node-postgres, `pg`).
  *
  * Runs during `npm run build` — on every Vercel deploy — applying pending files
- * in ../migrations to DATABASE_URL. Each file is applied in one transaction and
- * recorded in a `_migrations` table, so it runs once and is safe to re-run.
- *
- * The read is non-recursive, so the opt-in auth schema under migrations/auth/
- * is not applied to an app that never asked for sign-in.
+ * in ../migrations (and ../migrations/auth/) to DATABASE_URL. Each file is
+ * applied in one transaction and recorded in a `_migrations` table, so it runs
+ * once and is safe to re-run.
  *
  * No DATABASE_URL (local / preview builds) -> skip; the PGLite fallback applies
  * the same files at startup instead (see src/lib/db.ts).
@@ -29,6 +27,7 @@ if (!databaseUrl) {
 const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
 async function main() {
+  // Collect migration files: top-level migrations/*.sql + migrations/auth/*.sql
   let entries;
   try {
     entries = await readdir(migrationsDir);
@@ -36,8 +35,21 @@ async function main() {
     console.log("[migrate] no migrations/ directory — nothing to do.");
     return;
   }
-  // An app with no schema of its own must not pay for a database connection.
-  if (pendingMigrations(entries, []).length === 0) {
+
+  // Auth migrations live in migrations/auth/ — include them with a subdir prefix
+  // so the basename key stays unique (e.g. "auth/0001_auth.sql").
+  const authDir = join(migrationsDir, "auth");
+  let authEntries = [];
+  try {
+    authEntries = (await readdir(authDir)).map((f) => `auth/${f}`);
+  } catch {
+    // No auth subdir — fine.
+  }
+
+  // Combine: top-level first, then auth. pendingMigrations sorts by name.
+  const allEntries = [...entries, ...authEntries];
+
+  if (pendingMigrations(allEntries, []).length === 0) {
     console.log("[migrate] no migrations — nothing to do.");
     return;
   }
@@ -53,11 +65,12 @@ async function main() {
     );
 
     let count = 0;
-    for (const { name } of pendingMigrations(entries, applied)) {
-      const text = await readFile(join(migrationsDir, name), "utf8");
+    for (const { name } of pendingMigrations(allEntries, applied)) {
+      // name may be "auth/0001_auth.sql" — resolve against migrationsDir
+      const filePath = join(migrationsDir, name);
+      const text = await readFile(filePath, "utf8");
       try {
         await client.query("BEGIN");
-        // pg's simple-query protocol runs a whole multi-statement file at once.
         await client.query(text);
         await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
         await client.query("COMMIT");
