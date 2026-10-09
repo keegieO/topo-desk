@@ -200,16 +200,17 @@ export function Ribbon({
       return;
     }
     const job = useJobs.getState().jobs.find((j) => j.id === useJobs.getState().activeId);
+    const sm = useBook.getState().sheetMeta;
     const chains = allChains(shots, remaps, userLines);
     openDocument(
-      `${job?.des || "plan"}_plan_sheet.html`,
+      `${sm.des || job?.des || "plan"}_plan_sheet.html`,
       htmlSheetSet({
-        title: job?.name || fileName || "Plan",
-        des: job?.des || "",
-        client: job?.client || "",
-        county: job?.county || "",
-        crs: job?.crs || "",
-        date: job?.survey?.date || "",
+        title: sm.title || job?.name || fileName || "Plan",
+        des: sm.des || job?.des || "",
+        client: sm.client || job?.client || "",
+        county: sm.county || job?.county || "",
+        crs: sm.crs || job?.crs || "",
+        date: sm.date || job?.survey?.date || "",
         firm: "GeoLine Solutions",
         shots,
         chains,

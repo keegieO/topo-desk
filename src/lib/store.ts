@@ -30,7 +30,21 @@ export type CadTool =
   | "split"
   | "text";
 export type MapMode = "off" | "aerial" | "hybrid" | "roads";
-export type RightTab = "levels" | "linear" | "terrain" | "cogo" | "qa" | "details";
+export type RightTab = "levels" | "linear" | "terrain" | "cogo" | "qa" | "details" | "sheet" | "profile" | "pts";
+
+/** Editable title-block fields for plan sheets and ORD package. */
+export type SheetMeta = {
+  title: string;
+  des: string;
+  client: string;
+  county: string;
+  crs: string;
+  drawnBy: string;
+  checkedBy: string;
+  date: string;
+  scale: string;
+  sheetOf: string;
+};
 
 export type CursorNez = { n: number; e: number; z: number; lat?: number; lon?: number } | null;
 
@@ -86,6 +100,8 @@ type State = {
   textTip: Vertex | null;
   arrowOn: boolean;
   selectedLeaderId: string | null;
+  sheetMeta: SheetMeta;
+  setSheetMeta: (patch: Partial<SheetMeta>) => void;
   loadText: (raw: string, fileName: string) => void;
   loadSample: () => void;
   loadBook: (raw: string, fileName: string, extra?: { remaps?: Record<string, string>; userLines?: UserLine[]; survey?: SurveyMeta; order?: CoordOrder; leaders?: Leader[] }) => void;
@@ -246,6 +262,18 @@ const uiDefaults = {
   arrowOn: true,
   selectedLeaderId: null as string | null,
   viewCmd: null as { nonce: number; fit?: boolean; n?: number; e?: number } | null,
+  sheetMeta: {
+    title: "",
+    des: "",
+    client: "",
+    county: "",
+    crs: "",
+    drawnBy: "",
+    checkedBy: "",
+    date: "",
+    scale: "auto",
+    sheetOf: "",
+  } as SheetMeta,
 };
 
 let lineSeq = 1;
@@ -747,6 +775,7 @@ export const useBook = create<State>()(
           return { shots, leaders: [...manual, ...next] };
         }),
       selectLeader: (id) => set({ selectedLeaderId: id, selectedUid: null, selectedLineId: null }),
+      setSheetMeta: (patch) => set((s) => ({ sheetMeta: { ...s.sheetMeta, ...patch } })),
       locate: (n, e) =>
         set((s) => ({ viewCmd: { nonce: (s.viewCmd?.nonce ?? 0) + 1, n, e } })),
       fitView: () => set((s) => ({ viewCmd: { nonce: (s.viewCmd?.nonce ?? 0) + 1, fit: true } })),
@@ -773,6 +802,7 @@ export const useBook = create<State>()(
         contourInterval: s.contourInterval,
         surveyStringsOn: s.surveyStringsOn,
         offsetFt: s.offsetFt,
+        sheetMeta: s.sheetMeta,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<State>;
