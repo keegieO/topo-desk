@@ -199,13 +199,17 @@ function buildScene(
       const c = elevColor(pts[i].z, zmin, zmax);
       colors.push(c.r, c.g, c.b);
     }
+    const nVerts = positions.length / 3;
     for (const t of tris) {
-      indices.push(t.a, t.b, t.c);
+      // Guard against out-of-bound indices from constrained triangulation
+      if (t.a < nVerts && t.b < nVerts && t.c < nVerts) {
+        indices.push(t.a, t.b, t.c);
+      }
     }
 
     geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    geo.setIndex(indices);
+    if (indices.length) geo.setIndex(indices);
     geo.computeVertexNormals();
 
     if (opts.showSurface) {
@@ -359,7 +363,9 @@ export function View3D({
       orbit?.dispose();
       ro.disconnect();
       renderer.dispose();
-      el.removeChild(renderer.domElement);
+      if (el.contains(renderer.domElement)) {
+        el.removeChild(renderer.domElement);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, showMesh, showSurface, showContours, showPoints, exaggeration]);

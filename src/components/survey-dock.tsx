@@ -273,6 +273,53 @@ function LinearPanel() {
   );
 }
 
+/** HSL elevation color ramp: blue→cyan→green→yellow→red */
+function elevColorCss(t: number): string {
+  const clamp = Math.max(0, Math.min(1, t));
+  let h: number, s: number, l: number;
+  if (clamp < 0.25) {
+    h = 240 - clamp * 160; s = 90; l = 40;
+  } else if (clamp < 0.5) {
+    const tt = (clamp - 0.25) / 0.25;
+    h = 196 - tt * 68; s = 80; l = 45;
+  } else if (clamp < 0.75) {
+    const tt = (clamp - 0.5) / 0.25;
+    h = 128 - tt * 56; s = 85; l = 50;
+  } else {
+    const tt = (clamp - 0.75) / 0.25;
+    h = 72 - tt * 72; s = 90; l = 55;
+  }
+  return `hsl(${h.toFixed(0)},${s}%,${l}%)`;
+}
+
+function ElevRamp({ zmin, zmax }: { zmin: number; zmax: number }) {
+  const steps = 10;
+  const ticks = Array.from({ length: steps + 1 }, (_, i) => i / steps);
+  const dz = zmax - zmin;
+  const range = dz > 0.01;
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[0.6875rem] font-medium text-foreground">Elevation color ramp</p>
+      <div className="flex gap-1.5 items-center">
+        <div
+          className="h-5 w-28 rounded"
+          style={{
+            background: `linear-gradient(to right, ${ticks.map((t) => elevColorCss(t)).join(", ")})`,
+          }}
+        />
+        <div className="flex flex-col text-[0.6rem] font-mono text-muted-foreground leading-none gap-0.5">
+          <span>{zmin.toFixed(1)} ft</span>
+          {range && <span>{((zmin + zmax) / 2).toFixed(1)}</span>}
+          <span>{zmax.toFixed(1)} ft</span>
+        </div>
+      </div>
+      {range && (
+        <p className="text-[0.6rem] text-muted-foreground font-mono">Δz = {dz.toFixed(2)} ft</p>
+      )}
+    </div>
+  );
+}
+
 function TerrainPanel() {
   const terrain = useBook((s) => s.terrain);
   const contoursOn = useBook((s) => s.contoursOn);
@@ -280,53 +327,91 @@ function TerrainPanel() {
   const setContoursOn = useBook((s) => s.setContoursOn);
   const setContourInterval = useBook((s) => s.setContourInterval);
   const buildTerrain = useBook((s) => s.buildTerrain);
+  const terrainBusy = useBook((s) => s.terrainBusy);
   const shots = useBook((s) => s.shots);
   const [show3d, setShow3d] = useState(false);
+
+  // Spot elevation stats
+  const spotStats = useMemo(() => {
+    if (!terrain || !terrain.pts.length) return null;
+    const sorted = [...terrain.pts].sort((a, b) => a.z - b.z);
+    const n = sorted.length;
+    const median = n % 2 === 0 ? (sorted[n / 2 - 1].z + sorted[n / 2].z) / 2 : sorted[Math.floor(n / 2)].z;
+    const mean = terrain.pts.reduce((acc, p) => acc + p.z, 0) / n;
+    return { high: sorted[n - 1], low: sorted[0], median, mean };
+  }, [terrain]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-border px-3 py-2">
-        <p className="text-sm font-medium">Terrain model</p>
+        <p className="text-sm font-medium">Terrain / TIN surface</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Builds when the book opens. GeoLine Solutionss hold the surface. Pipe inverts stay off it.
+          Builds on load. Breakline codes (EP, EG, RC, etc.) constrain the TIN edges.
         </p>
       </div>
-      <div className="flex flex-col gap-3 px-3 py-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="ci">Contour interval (ft)</Label>
-          <Input
-            id="ci"
-            type="number"
-            min={0.1}
-            step={0.5}
-            value={contourInterval}
-            onChange={(e) => setContourInterval(Number(e.target.value) || 1)}
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button type="button" size="sm" onClick={() => buildTerrain()} disabled={shots.length < 3}>
-            Rebuild terrain
-          </Button>
-          {terrain && (
-            <Button type="button" size="sm" variant="outline" onClick={() => setShow3d(true)}>
-              View 3D
+      <ScrollArea className="flex-1">
+        <div className="flex flex-col gap-3 px-3 py-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ci">Contour interval (ft)</Label>
+            <Input
+              id="ci"
+              type="number"
+              min={0.1}
+              step={0.5}
+              value={contourInterval}
+              onChange={(e) => setContourInterval(Number(e.target.value) || 1)}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={() => buildTerrain()} disabled={shots.length < 3 || terrainBusy}>
+              {terrainBusy ? "Building…" : "Rebuild terrain"}
             </Button>
+            {terrain && (
+              <Button type="button" size="sm" variant="outline" onClick={() => setShow3d(true)}>
+                View 3D
+              </Button>
+            )}
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={contoursOn} onChange={(e) => setContoursOn(e.target.checked)} />
+            Show contours on map
+          </label>
+
+          {terrain ? (
+            <>
+              <div className="rounded border border-border bg-muted/20 p-2 flex flex-col gap-1.5">
+                <p className="text-[0.6875rem] font-medium text-foreground">Surface statistics</p>
+                <p className="font-mono text-[0.6rem] text-muted-foreground">
+                  {terrain.pts.length.toLocaleString()} ground pts · {terrain.tris.length.toLocaleString()} triangles
+                </p>
+                <p className="font-mono text-[0.6rem] text-muted-foreground">
+                  {terrain.contours.length} contour rings · interval {contourInterval} ft
+                </p>
+                {spotStats && (
+                  <>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono text-[0.6rem] text-muted-foreground mt-0.5">
+                      <span className="text-foreground">High:</span><span>{spotStats.high.z.toFixed(2)} ft</span>
+                      <span className="text-foreground">Low:</span><span>{spotStats.low.z.toFixed(2)} ft</span>
+                      <span className="text-foreground">Mean:</span><span>{spotStats.mean.toFixed(2)} ft</span>
+                      <span className="text-foreground">Median:</span><span>{spotStats.median.toFixed(2)} ft</span>
+                    </div>
+                    <p className="font-mono text-[0.6rem] text-muted-foreground">
+                      High at N {spotStats.high.n.toFixed(1)} E {spotStats.high.e.toFixed(1)}
+                    </p>
+                    <p className="font-mono text-[0.6rem] text-muted-foreground">
+                      Low at N {spotStats.low.n.toFixed(1)} E {spotStats.low.e.toFixed(1)}
+                    </p>
+                  </>
+                )}
+                <p className="font-mono text-[0.6rem] text-muted-foreground">{terrain.note}</p>
+              </div>
+              <ElevRamp zmin={terrain.zmin} zmax={terrain.zmax} />
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">No surface yet. Build terrain to contour the survey.</p>
           )}
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={contoursOn} onChange={(e) => setContoursOn(e.target.checked)} />
-          Show contours
-        </label>
-        {terrain ? (
-          <p className="font-mono text-[0.6875rem] text-muted-foreground">
-            {terrain.pts.length} ground pts · {terrain.tris.length} triangles · {terrain.contours.length} contours
-            <br />
-            {terrain.zmin.toFixed(2)} to {terrain.zmax.toFixed(2)}
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">No surface yet. Build terrain to contour the survey.</p>
-        )}
-      </div>
+      </ScrollArea>
 
       {/* 3D Terrain modal overlay */}
       {show3d && terrain && (
