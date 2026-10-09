@@ -15,21 +15,16 @@ const databaseUrl =
  * a local embedded **PGLite** (Postgres compiled to WASM) for local dev only.
  *
  * In production (`NODE_ENV === "production"`) a missing DATABASE_URL is a fatal
- * misconfiguration — the app refuses to start rather than silently running
- * in-memory and losing all data on the next deploy.
+ * misconfiguration — `getSql()` throws on first use rather than silently running
+ * in-memory and losing all data on the next deploy. The error is deferred to
+ * call time (not module load) so the HTML shell can still render.
  */
-if (
+export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
+
+const missingProdDb =
   typeof process !== "undefined" &&
   process.env.NODE_ENV === "production" &&
-  !databaseUrl
-) {
-  throw new Error(
-    "[db] DATABASE_URL is not set. " +
-      "In production the app requires a Neon (or Postgres) connection string. " +
-      "Set DATABASE_URL in your Vercel environment variables and redeploy.",
-  );
-}
-export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
+  !databaseUrl;
 
 /**
  * Minimal shared SQL surface, satisfied by both Neon and PGLite. Both the
@@ -190,6 +185,13 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
+  if (missingProdDb) {
+    throw new Error(
+      "[db] DATABASE_URL is not set. " +
+        "In production the app requires a Neon (or Postgres) connection string. " +
+        "Set DATABASE_URL in your Vercel environment variables and redeploy.",
+    );
+  }
   return dbSource === "neon" ? createNeonSql() : createPgliteSql();
 }
 
@@ -243,7 +245,7 @@ export function ensureDbReady(): Promise<void> {
 const globalBoot = globalThis as typeof globalThis & {
   __pgBootstrapPromise__?: Promise<void>;
 };
-if (typeof window === "undefined" && dbSource === "pglite") {
+if (typeof window === "undefined" && dbSource === "pglite" && !missingProdDb) {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);
