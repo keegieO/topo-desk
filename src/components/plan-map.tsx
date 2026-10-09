@@ -370,6 +370,41 @@ export function PlanMap() {
         });
         return;
       }
+      if (st.tool === "delete") {
+        const hit = nearestShot(ne.n, ne.e, st.shots, 12);
+        if (hit) {
+          st.deleteShot(hit.uid);
+          toast.success(`Deleted pt ${hit.point}`);
+        } else {
+          // Try deleting selected line
+          if (st.selectedLineId) {
+            st.deleteSelected();
+            toast.success("Deleted line");
+          }
+        }
+        return;
+      }
+      if (st.tool === "copy") {
+        const hit = nearestShot(ne.n, ne.e, st.shots, 12);
+        if (!st.selectedUid) {
+          // First click: pick source
+          if (hit) {
+            st.setSelected(hit.uid);
+            toast.message(`Copy: click destination for pt ${hit.point}`);
+          }
+        } else {
+          // Second click: place copy at destination
+          const src = st.shots.find((s) => s.uid === st.selectedUid);
+          if (src) {
+            const dN = pt.n - src.northing;
+            const dE = pt.e - src.easting;
+            const newUid = st.duplicateShot(st.selectedUid, dN, dE);
+            if (newUid) toast.success(`Copied to pt`);
+          }
+          st.setSelected(null);
+        }
+        return;
+      }
       if (st.tool === "recode") {
         const hit = nearestShot(ne.n, ne.e, st.shots, 12);
         if (hit && st.activeCode) st.recodeShot(hit.uid, st.activeCode);
@@ -932,7 +967,9 @@ export function PlanMap() {
     tool === "inverse" ||
     tool === "offset" ||
     tool === "join" ||
-    tool === "split";
+    tool === "split" ||
+    tool === "delete" ||
+    tool === "copy";
 
   return (
     <div className="flex h-full min-h-0 w-full">

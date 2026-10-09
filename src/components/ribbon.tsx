@@ -36,6 +36,8 @@ import {
   Globe,
   Undo2,
   Redo2,
+  Trash2,
+  CopyPlus,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -512,6 +514,8 @@ export function Ribbon({
         <ToolBtn id="offset" tool={tool} setTool={setTool} icon={<MoveHorizontal />} label="Offset" />
         <ToolBtn id="join" tool={tool} setTool={setTool} icon={<GitMerge />} label="Join" />
         <ToolBtn id="split" tool={tool} setTool={setTool} icon={<Scissors />} label="Split" />
+        <ToolBtn id="delete" tool={tool} setTool={setTool} icon={<Trash2 />} label="Delete" />
+        <ToolBtn id="copy" tool={tool} setTool={setTool} icon={<CopyPlus />} label="Copy" />
         <ToggleBtn on={stylesOn} onClick={() => setStylesOn(!stylesOn)} icon={<Spline />} label="Styles" />
         <ToggleBtn on={labelsOn} onClick={() => setLabelsOn(!labelsOn)} icon={<Tag />} label="Labels" />
         <ToggleBtn on={useBook((s) => s.arrowOn)} onClick={() => useBook.getState().setArrowOn(!useBook.getState().arrowOn)} icon={<MousePointer2 />} label="Arrow" />

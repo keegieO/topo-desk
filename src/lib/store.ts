@@ -38,7 +38,9 @@ export type CadTool =
   | "offset"
   | "join"
   | "split"
-  | "text";
+  | "text"
+  | "delete"
+  | "copy";
 export type MapMode = "off" | "aerial" | "hybrid" | "roads";
 export type RightTab = "levels" | "linear" | "terrain" | "cogo" | "qa" | "details" | "sheet" | "profile" | "pts" | "recode" | "eleminfo" | "layers";
 
@@ -148,6 +150,10 @@ type State = {
   addShot: (v: Vertex, code?: string) => void;
   setShotDesc: (uid: string, description: string) => void;
   updateShot: (uid: string, patch: Partial<Pick<LabeledShot, "point" | "northing" | "easting" | "elevation" | "description">>) => void;
+  /** Delete a single shot by uid (undo-able). */
+  deleteShot: (uid: string) => void;
+  /** Duplicate a shot offset by dN/dE ft (undo-able), returns new uid. */
+  duplicateShot: (uid: string, dN: number, dE: number) => string | null;
   addDraft: (v: Vertex) => void;
   undoDraft: () => void;
   commitDraft: () => void;
@@ -589,6 +595,46 @@ export const useBook = create<State>()(
             activeCode: next,
           };
         }),
+      deleteShot: (uid) =>
+        set((s) => {
+          const exists = s.shots.some((sh) => sh.uid === uid);
+          if (!exists) return {};
+          return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
+            shots: s.shots.filter((sh) => sh.uid !== uid),
+            selectedUid: s.selectedUid === uid ? null : s.selectedUid,
+          };
+        }),
+      duplicateShot: (uid, dN, dE) => {
+        let newUid: string | null = null;
+        set((s) => {
+          const src = s.shots.find((sh) => sh.uid === uid);
+          if (!src) return {};
+          newUid = `p${Date.now().toString(36)}${shotSeq++}`;
+          const nums = s.shots.map((sh) => Number(sh.point)).filter((n) => Number.isFinite(n));
+          const pn = (nums.length ? Math.max(...nums) : 1000) + 1;
+          const copy: LabeledShot = relabel({
+            ...src,
+            uid: newUid,
+            point: String(pn),
+            rowIndex: s.shots.length,
+            northing: src.northing + dN,
+            easting: src.easting + dE,
+          }, src.description);
+          return {
+            _past: pushHistory(s._past, snap(s)),
+            _future: [],
+            canUndo: true,
+            canRedo: false,
+            shots: [...s.shots, copy],
+            selectedUid: newUid,
+          };
+        });
+        return newUid;
+      },
       addShot: (v, code) =>
         set((s) => {
           const alpha = (code || s.activeCode || "EP").toUpperCase();
