@@ -5,21 +5,15 @@ import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { nitro } from "nitro/vite";
-// @ts-expect-error JS plugin alongside the TS vite config
-import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
-// @ts-expect-error JS plugin alongside the TS vite config
-import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 /**
- * Nitro traces the PGLite JS but not `pglite.data`. The bundled module reads
- * that file beside itself, so the production function crashes on first query
- * when DATABASE_URL is unset (local preview). Copy it into the function bundle.
+ * Nitro traces the PGLite JS but not `pglite.data`. Copy it into the bundle
+ * so the production function can find it beside itself.
  */
 function pgliteDataPlugin(): Plugin {
   return {
-    name: "app-builder:pglite-data",
+    name: "geoline:pglite-data",
     apply: "build",
     closeBundle() {
       const from = join(process.cwd(), "node_modules/@electric-sql/pglite/dist");
@@ -43,17 +37,12 @@ function hasGlobbedMigrations(root: string): boolean {
 }
 
 /**
- * Finish PGLite bootstrap during dev-server setup (before traffic). Vite awaits
- * async `configureServer` hooks. Production: `src/lib/db` kicks `ensureDbReady`
- * on import.
- *
- * Vite awaiting the hook puts this on time-to-first-render, so an app with no
- * migrations — no schema to apply — skips it entirely rather than paying for a
- * PGLite instance it never queries.
+ * Warm up PGLite during dev-server startup so the first page load doesn't
+ * block on schema migration. Skipped when there are no migration files.
  */
 function pgliteBootstrapPlugin(): Plugin {
   return {
-    name: "app-builder:pglite-bootstrap",
+    name: "geoline:pglite-bootstrap",
     apply: "serve",
     async configureServer(server) {
       if (!hasGlobbedMigrations(server.config.root)) return;
@@ -65,7 +54,7 @@ function pgliteBootstrapPlugin(): Plugin {
           await mod.ensureDbReady();
         }
       } catch (err) {
-        console.error("[app-builder] DB bootstrap failed:", err);
+        console.error("[geoline] DB bootstrap failed:", err);
         throw err;
       }
     },
@@ -73,23 +62,14 @@ function pgliteBootstrapPlugin(): Plugin {
 }
 
 /**
- * Live-preview OAuth popup — handled HERE so the agent never has to create a
- * `/auth/popup` route (and cannot break it by scaffolding a React page that
- * paints the full app shell in the popup).
- *
- * `signIn` (client.ts) opens `/auth/popup?providerId=…` in a top-level window.
- * This middleware runs before TanStack Start, calls `handleAuthPopupRequest`,
- * and returns the 302 / completion HTML. Deployed apps do not use the popup
- * (full-page OAuth redirect), so `apply: "serve"` is enough.
+ * Handle /auth/popup OAuth callback in dev before TanStack Start's HTML
+ * fallback intercepts it.
  */
 function authPopupPlugin(): Plugin {
   return {
-    name: "app-builder:auth-popup",
+    name: "geoline:auth-popup",
     apply: "serve",
     configureServer(server) {
-      // Register immediately (not in a returned post-hook) so we run BEFORE
-      // TanStack Start / the SPA HTML fallback. A model-authored
-      // `src/routes/auth/popup.tsx` React page must never win this path.
       server.middlewares.use(async (req, res, next) => {
         try {
           const rawUrl = req.url ?? "";
@@ -110,7 +90,9 @@ function authPopupPlugin(): Plugin {
           );
           const proto = String(
             req.headers["x-forwarded-proto"] ??
-              ((req.socket as { encrypted?: boolean } | undefined)?.encrypted ? "https" : "http"),
+              ((req.socket as { encrypted?: boolean } | undefined)?.encrypted
+                ? "https"
+                : "http"),
           );
           const requestHeaders = new Headers();
           for (const [key, value] of Object.entries(req.headers)) {
@@ -121,8 +103,6 @@ function authPopupPlugin(): Plugin {
               requestHeaders.set(key, value);
             }
           }
-          // Ensure Host is the public preview host so Better Auth's dynamic
-          // baseURL / redirect_uri match the popup origin.
           if (!requestHeaders.has("host")) requestHeaders.set("host", host);
 
           const request = new Request(`${proto}://${host}${rawUrl}`, {
@@ -130,13 +110,14 @@ function authPopupPlugin(): Plugin {
             headers: requestHeaders,
           });
 
-          const mod = (await server.ssrLoadModule("/src/lib/auth/popup.server.ts")) as {
+          const mod = (await server.ssrLoadModule(
+            "/src/lib/auth/popup.server.ts",
+          )) as {
             handleAuthPopupRequest: (req: Request) => Promise<Response>;
           };
           const response = await mod.handleAuthPopupRequest(request);
 
           res.statusCode = response.status;
-          // Preserve multiple Set-Cookie headers (OAuth state + session).
           const setCookies =
             typeof response.headers.getSetCookie === "function"
               ? response.headers.getSetCookie()
@@ -151,7 +132,7 @@ function authPopupPlugin(): Plugin {
           const body = Buffer.from(await response.arrayBuffer());
           res.end(body);
         } catch (err) {
-          console.error("[app-builder] /auth/popup handler failed:", err);
+          console.error("[geoline] /auth/popup handler failed:", err);
           if (!res.headersSent) {
             res.statusCode = 500;
             res.setHeader("content-type", "text/plain; charset=utf-8");
@@ -163,9 +144,7 @@ function authPopupPlugin(): Plugin {
   };
 }
 
-// `0.0.0.0:8080` is the live-preview contract — don't change host/port.
-// The dev server starts once `src/router.tsx` and `src/routes/` exist — see
-// AGENTS.md § "First scaffold".
+// Port 8080 is the dev contract — Claude Code and local dev both use it.
 export default defineConfig(({ command, isPreview }) => ({
   server: {
     host: "0.0.0.0",
@@ -173,32 +152,16 @@ export default defineConfig(({ command, isPreview }) => ({
     strictPort: true,
   },
   preview: {
-    host: "127.0.0.1",
-    port: 8081,
-    strictPort: true,
+    host: "0.0.0.0",
+    port: 8080,
+    strictPort: false,
   },
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
-    // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
-    // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
-    appEnvPlugin(),
-    // PWA head + ?install=1 tutorial page; runs before Start/Nitro.
-    grokPwaPlugin(),
     tailwindcss(),
     tanstackStart(),
-    ...(command === "build" || isPreview
-      ? [
-          nitro({
-            preset: "vercel",
-            // Auto-registers server/middleware/* (the PWA install page +
-            // manifest + head-tag middleware). Nitro v3 defaults serverDir to
-            // false, so removing this silently unwires /?install=1 on deploys.
-            serverDir: "./server",
-          }),
-        ]
-      : []),
     pgliteDataPlugin(),
     viteReact(),
   ],

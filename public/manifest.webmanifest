@@ -1,0 +1,23 @@
+{
+  "name": "GeoLine Solutions",
+  "short_name": "GeoLine",
+  "description": "Survey field-book extraction — INDOT-coded PNEZD, DXF, and QA tools for survey crews.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#215e9e",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

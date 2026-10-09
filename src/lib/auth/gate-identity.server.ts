@@ -32,7 +32,9 @@ export function gateIdentityEnabled(): boolean {
 
 export function gateTokenAudience(): string {
   if (isWorkspacePreview()) return PREVIEW_AUDIENCE;
-  return `app:${env("GROK_PROJECT_ID")}`;
+  // In production, scope the audience to the app's own hostname.
+  const appHost = env("APP_HOST") ?? env("VERCEL_URL") ?? "geolinesolutions.app";
+  return `app:${appHost}`;
 }
 
 async function defaultJwksFetch(url: string): Promise<GateJwks | null> {

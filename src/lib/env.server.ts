@@ -4,11 +4,18 @@ export function env(key: string): string | undefined {
 }
 
 /**
- * Workspace preview vs deployed app. The deployer writes GROK_PROJECT_ID on
- * every publish; the sandbox preview never has it. Single source of truth for
- * the split — gate audience, gate endpoints and connector-token semantics all
- * key off this predicate.
+ * True when running in a production deployment (NODE_ENV=production and
+ * DATABASE_URL is set). Used to gate audience identifiers and endpoint
+ * resolution. In local dev and Claude Code sessions this returns false,
+ * which is the safe default — auth falls back to PGLite dev mode.
+ */
+export function isDeployed(): boolean {
+  return process.env.NODE_ENV === "production" && Boolean(env("DATABASE_URL"));
+}
+
+/**
+ * @deprecated Use isDeployed() — kept for any remaining callers until cleaned.
  */
 export function isWorkspacePreview(): boolean {
-  return !env("GROK_PROJECT_ID");
+  return !isDeployed();
 }
