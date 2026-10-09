@@ -9,6 +9,7 @@ import {
   type InvoiceStatus,
   type Job,
   type JobStatus,
+  type LineItem,
   type TimeEntry,
 } from "./job-types";
 import { saveJob, deleteJob } from "./jobs-api";
@@ -20,6 +21,8 @@ export type {
   JobFile,
   JobKind,
   JobStatus,
+  LineItem,
+  LineItemKind,
   QuoteLine,
   SurveyMeta,
   TimeEntry,
@@ -52,6 +55,8 @@ type JobsState = {
   addTime: (id: string, entry: Omit<TimeEntry, "id">) => void;
   setInvoice: (id: string, status: InvoiceStatus) => void;
   addChangeOrder: (id: string, co: Omit<ChangeOrder, "id">) => void;
+  addLineItem: (id: string, item: Omit<LineItem, "id">) => void;
+  removeLineItem: (id: string, itemId: string) => void;
   removeJob: (id: string) => void;
   clearJobs: () => void;
 };
@@ -139,6 +144,22 @@ export const useJobs = create<JobsState>()(
         set({
           jobs: get().jobs.map((j) =>
             j.id === id ? { ...j, changeOrders: [...(j.changeOrders ?? []), { ...co, id: tid() }] } : j,
+          ),
+        });
+        persistJob(get().jobs.find((j) => j.id === id));
+      },
+      addLineItem: (id, item) => {
+        set({
+          jobs: get().jobs.map((j) =>
+            j.id === id ? { ...j, lineItems: [...(j.lineItems ?? []), { ...item, id: tid() }] } : j,
+          ),
+        });
+        persistJob(get().jobs.find((j) => j.id === id));
+      },
+      removeLineItem: (id, itemId) => {
+        set({
+          jobs: get().jobs.map((j) =>
+            j.id === id ? { ...j, lineItems: (j.lineItems ?? []).filter((x) => x.id !== itemId) } : j,
           ),
         });
         persistJob(get().jobs.find((j) => j.id === id));

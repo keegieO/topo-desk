@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useFirm } from "@/lib/firm";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ import {
   type JobStatus,
   type TimeKind,
   type InvoiceStatus,
+  type LineItem,
+  type LineItemKind,
 } from "@/lib/jobs";
 import { loadJobBook } from "@/lib/open-job";
 import { htmlInvoice, htmlProposal, htmlSow } from "@/lib/paper";
@@ -32,6 +35,8 @@ export function JobTicket({ job }: { job: Job }) {
   const updateJob = useJobs((s) => s.updateJob);
   const setActive = useJobs((s) => s.setActive);
   const addChangeOrder = useJobs((s) => s.addChangeOrder);
+  const addLineItem = useJobs((s) => s.addLineItem);
+  const removeLineItem = useJobs((s) => s.removeLineItem);
   const navigate = useNavigate();
   const money = quoteJob(job);
   const logged = job.timeLog.reduce((a, t) => a + t.hours, 0);
@@ -72,6 +77,11 @@ export function JobTicket({ job }: { job: Job }) {
           <TicketNotes job={job} />
           <TimeLog job={job} onAdd={(e) => addTime(job.id, e)} />
           <ChangeOrders job={job} onAdd={(co) => addChangeOrder(job.id, co)} />
+          <LineItems
+            job={job}
+            onAdd={(item) => addLineItem(job.id, item)}
+            onRemove={(itemId) => removeLineItem(job.id, itemId)}
+          />
         </div>
         <aside className="flex flex-col gap-3">
           <div className="rounded-md border border-border bg-background p-3">
@@ -352,6 +362,91 @@ function ChangeOrders({
         <Button type="submit" size="sm" variant="secondary">
           Add CO
         </Button>
+      </form>
+    </div>
+  );
+}
+
+function LineItems({
+  job,
+  onAdd,
+  onRemove,
+}: {
+  job: Job;
+  onAdd: (item: Omit<LineItem, "id">) => void;
+  onRemove: (id: string) => void;
+}) {
+  const rates = useFirm((s) => s.rates);
+  const [kind, setKind] = useState<LineItemKind>("lidar_class");
+  const [qty, setQty] = useState("1");
+  const [desc, setDesc] = useState("");
+
+  const PRESETS: Record<LineItemKind, { desc: string; unit: string; rate: (r: typeof rates) => number }> = {
+    lidar_class:  { desc: "LiDAR classification", unit: "mi", rate: (r) => r.lidarClassMile },
+    breakline:    { desc: "GeoLine Solutions extraction", unit: "mi", rate: (r) => r.breaklineMile },
+    planimetric:  { desc: "Planimetrics", unit: "mi", rate: (r) => r.planimetricMile },
+    lidar_qa:     { desc: "LiDAR QA review", unit: "mi", rate: (_) => 150 },
+    extra_coding: { desc: "Extra INDOT coding", unit: "job", rate: (r) => r.codingJob },
+    custom:       { desc: "", unit: "ls", rate: (_) => 0 },
+  };
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const q = Number(qty);
+    if (!q || q <= 0) { toast.error("Qty required"); return; }
+    const preset = PRESETS[kind];
+    const rate = preset.rate(rates);
+    const finalDesc = kind === "custom" ? desc.trim() || "Custom item" : preset.desc;
+    if (kind === "custom" && !desc.trim()) { toast.error("Description required"); return; }
+    onAdd({ kind, desc: finalDesc, qty: q, unit: preset.unit, rate, amount: q * rate });
+    setQty("1");
+    setDesc("");
+    toast.success("Line item added");
+  }
+
+  return (
+    <div>
+      <p className="kicker">Add-ons &amp; line items</p>
+      {(job.lineItems ?? []).length ? (
+        <ul className="mt-2 flex flex-col gap-1 font-mono text-xs">
+          {(job.lineItems ?? []).map((item) => (
+            <li key={item.id} className="flex justify-between gap-2">
+              <span>{item.qty} {item.unit} · {item.desc}</span>
+              <span className="text-muted-foreground">${item.amount.toLocaleString("en-US")}</span>
+              <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => onRemove(item.id)}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs text-muted-foreground">No add-ons. Add LiDAR classification, planimetrics, or custom items.</p>
+      )}
+      <form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-[8rem_5rem_1fr_auto] sm:items-end">
+        <div className="flex flex-col gap-1">
+          <Label>Service</Label>
+          <NativeSelect value={kind} onChange={(e) => setKind(e.target.value as LineItemKind)}>
+            <option value="lidar_class">LiDAR class.</option>
+            <option value="breakline">Extraction</option>
+            <option value="planimetric">Planimetrics</option>
+            <option value="lidar_qa">LiDAR QA</option>
+            <option value="extra_coding">Extra coding</option>
+            <option value="custom">Custom</option>
+          </NativeSelect>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label>Qty</Label>
+          <Input value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label>{kind === "custom" ? "Description" : "Note (optional)"}</Label>
+          <Input
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder={kind === "custom" ? "Custom service..." : PRESETS[kind].desc}
+          />
+        </div>
+        <Button type="submit" size="sm" variant="secondary">Add</Button>
       </form>
     </div>
   );

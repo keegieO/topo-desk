@@ -34,6 +34,24 @@ export type ChangeOrder = {
   amount: number;
 };
 
+export type LineItemKind =
+  | "lidar_class"
+  | "breakline"
+  | "planimetric"
+  | "lidar_qa"
+  | "extra_coding"
+  | "custom";
+
+export type LineItem = {
+  id: string;
+  kind: LineItemKind;
+  desc: string;
+  qty: number;
+  unit: string;
+  rate: number;
+  amount: number;
+};
+
 export type SurveyBook = { name: string; points: number };
 
 export type SurveyMeta = {
@@ -85,6 +103,7 @@ export type Job = {
   paidAt?: string;
   phone?: string;
   changeOrders: ChangeOrder[];
+  lineItems?: LineItem[];
 };
 
 export const emptySurvey = (): SurveyMeta => ({
@@ -102,7 +121,7 @@ export const emptySurvey = (): SurveyMeta => ({
 });
 
 export function quoteLines(
-  job: Pick<Job, "hours" | "rush"> & { changeOrders?: ChangeOrder[] },
+  job: Pick<Job, "hours" | "rush"> & { changeOrders?: ChangeOrder[]; lineItems?: LineItem[] },
   rates: typeof RATES = RATES,
 ): QuoteLine[] {
   const lines: QuoteLine[] = [];
@@ -122,6 +141,19 @@ export function quoteLines(
     rate: rates.codingJob,
     amount: rates.codingJob,
   });
+
+  // Custom line items
+  for (const item of job.lineItems ?? []) {
+    lines.push({
+      desc: item.desc,
+      qty: item.qty,
+      unit: item.unit,
+      rate: item.rate,
+      amount: item.amount,
+    });
+  }
+
+  // Rush applies after subtotal including line items
   const sub = lines.reduce((a, l) => a + l.amount, 0);
   if (job.rush) {
     lines.push({
@@ -132,6 +164,8 @@ export function quoteLines(
       amount: sub * (rates.rush - 1),
     });
   }
+
+  // Change orders at the end
   for (const co of job.changeOrders ?? []) {
     lines.push({
       desc: `CO: ${co.desc}`,
@@ -214,6 +248,7 @@ export function normalizeJob(j: Partial<Job> & { id: string }): Job {
     paidAt: j.paidAt,
     phone: j.phone,
     changeOrders: j.changeOrders ?? [],
+    lineItems: j.lineItems ?? [],
     id: j.id,
   };
 }

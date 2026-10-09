@@ -292,79 +292,90 @@ export function View3D({
   useEffect(() => {
     const el = mountRef.current;
     if (!el) return;
-    const w = el.clientWidth  || 800;
-    const h = el.clientHeight || 500;
 
-    // ── Renderer ─────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(w, h);
-    renderer.setClearColor(0x1a1d23);
-    el.appendChild(renderer.domElement);
-
-    // ── Camera ────────────────────────────────────────────────────────────
-    const camera = new THREE.PerspectiveCamera(50, w / h, 0.01, 1e7);
-    camera.up.set(0, 0, 1);
-    camera.position.set(100, -100, 100);
-    camera.lookAt(0, 0, 0);
-
-    // ── Scene ─────────────────────────────────────────────────────────────
-    const scene = new THREE.Scene();
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const sun = new THREE.DirectionalLight(0xfff4e0, 1.1);
-    sun.position.set(0.6, -0.4, 1).normalize();
-    scene.add(sun);
-    const fill = new THREE.DirectionalLight(0x88aaff, 0.35);
-    fill.position.set(-0.5, 0.5, 0.5).normalize();
-    scene.add(fill);
-
-    // ── Axes helper ───────────────────────────────────────────────────────
-    scene.add(new THREE.AxesHelper(5));
-
-    // ── Terrain group ─────────────────────────────────────────────────────
+    let animId = 0;
     let orbit: SimpleOrbit | null = null;
-    if (model && model.pts.length > 0) {
-      const { group } = buildScene(model, {
-        showMesh,
-        showSurface,
-        showContours,
-        showPoints,
-        exag: exaggeration,
-      });
-      scene.add(group);
-      orbit = new SimpleOrbit(camera, renderer.domElement);
-      orbit.fitTo(model.pts);
-      setInfo(`${model.pts.length.toLocaleString()} pts · ${model.tris.length.toLocaleString()} tris · Δz ${(model.zmax - model.zmin).toFixed(1)} ft`);
-    } else {
-      orbit = new SimpleOrbit(camera, renderer.domElement);
-      setInfo("No terrain data loaded");
-    }
+    let renderer: THREE.WebGLRenderer | null = null;
+    let camera: THREE.PerspectiveCamera | null = null;
 
     // ── Resize observer ───────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {
-      const nw = el.clientWidth;
-      const nh = el.clientHeight;
+      if (!renderer || !camera) return;
+      const nw = Math.max(1, el.offsetWidth);
+      const nh = Math.max(1, el.offsetHeight);
       renderer.setSize(nw, nh);
       camera.aspect = nw / nh;
       camera.updateProjectionMatrix();
     });
     ro.observe(el);
 
-    // ── Render loop ───────────────────────────────────────────────────────
-    let animId = 0;
-    const render = () => {
-      animId = requestAnimationFrame(render);
-      renderer.render(scene, camera);
-    };
-    render();
+    // Defer init until after the DOM is laid out so dimensions are non-zero
+    const rafId = requestAnimationFrame(() => {
+      const w = Math.max(el.offsetWidth, 400);
+      const h = Math.max(el.offsetHeight, 300);
+
+      // ── Renderer ─────────────────────────────────────────────────────────
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(w, h);
+      renderer.setClearColor(0x1a1d23);
+      el.appendChild(renderer.domElement);
+
+      // ── Camera ────────────────────────────────────────────────────────────
+      camera = new THREE.PerspectiveCamera(50, w / h, 0.01, 1e7);
+      camera.up.set(0, 0, 1);
+      camera.position.set(100, -100, 100);
+      camera.lookAt(0, 0, 0);
+
+      // ── Scene ─────────────────────────────────────────────────────────────
+      const scene = new THREE.Scene();
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      const sun = new THREE.DirectionalLight(0xfff4e0, 1.1);
+      sun.position.set(0.6, -0.4, 1).normalize();
+      scene.add(sun);
+      const fill = new THREE.DirectionalLight(0x88aaff, 0.35);
+      fill.position.set(-0.5, 0.5, 0.5).normalize();
+      scene.add(fill);
+
+      // ── Axes helper ───────────────────────────────────────────────────────
+      scene.add(new THREE.AxesHelper(5));
+
+      // ── Terrain group ─────────────────────────────────────────────────────
+      if (model && model.pts.length > 0) {
+        const { group } = buildScene(model, {
+          showMesh,
+          showSurface,
+          showContours,
+          showPoints,
+          exag: exaggeration,
+        });
+        scene.add(group);
+        orbit = new SimpleOrbit(camera, renderer.domElement);
+        orbit.fitTo(model.pts);
+        setInfo(`${model.pts.length.toLocaleString()} pts · ${model.tris.length.toLocaleString()} tris · Δz ${(model.zmax - model.zmin).toFixed(1)} ft`);
+      } else {
+        orbit = new SimpleOrbit(camera, renderer.domElement);
+        setInfo("No terrain data loaded");
+      }
+
+      // ── Render loop ───────────────────────────────────────────────────────
+      const render = () => {
+        animId = requestAnimationFrame(render);
+        if (renderer && camera) renderer.render(scene, camera);
+      };
+      render();
+    });
 
     return () => {
+      cancelAnimationFrame(rafId);
       cancelAnimationFrame(animId);
       orbit?.dispose();
       ro.disconnect();
-      renderer.dispose();
-      if (el.contains(renderer.domElement)) {
-        el.removeChild(renderer.domElement);
+      if (renderer) {
+        renderer.dispose();
+        if (el.contains(renderer.domElement)) {
+          el.removeChild(renderer.domElement);
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,7 +383,7 @@ export function View3D({
 
   return (
     <div className={`relative w-full h-full min-h-[400px] bg-[#1a1d23] ${className}`}>
-      <div ref={mountRef} className="w-full h-full" />
+      <div ref={mountRef} className="w-full h-full" style={{ minHeight: "inherit" }} />
 
       {/* HUD overlay */}
       <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between pointer-events-none select-none">

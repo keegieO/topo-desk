@@ -89,8 +89,10 @@ export function htmlInvoice(job: Job): string {
   const date = job.sentAt || job.createdAt || new Date().toISOString().slice(0, 10);
   const status =
     job.invoiceStatus === "paid" ? `PAID ${job.paidAt || ""}` : job.invoiceStatus === "sent" ? "SENT" : "DRAFT";
+  const badgeClass = job.invoiceStatus === "paid" ? "paid" : job.invoiceStatus === "sent" ? "sent" : "draft";
   return `${head(f, "Invoice", no)}
-  <p class="mono muted">Date ${esc(date)} · Terms ${esc(f.terms)} · Due ${esc(job.due || "—")} · ${esc(status)}</p>
+  <p class="mono muted">Date ${esc(date)} &nbsp;·&nbsp; Terms ${esc(f.terms)} &nbsp;·&nbsp; Due ${esc(job.due || "—")}</p>
+  <p style="margin:4pt 0 8pt"><span class="badge badge-${badgeClass}">${esc(status)}</span></p>
   ${billTo(job)}
   ${jobBlock(job)}
   ${linesTable(job)}
@@ -242,11 +244,6 @@ export function htmlTransmittal(opts: {
   ${disclaimer()}`;
 }
 
-const SEV_COLOR: Record<string, string> = {
-  error: "#c0392b",
-  warn: "#d68910",
-  info: "#1a5276",
-};
 
 export function htmlQaReport(job: Job, report: QaReport, shots: LabeledShot[]): string {
   const f = getFirm();
@@ -271,8 +268,8 @@ export function htmlQaReport(job: Job, report: QaReport, shots: LabeledShot[]): 
   ]
     .map(
       (r) => `<tr>
-      <td><span style="display:inline-block;padding:2px 8px;border-radius:3px;background:${SEV_COLOR[r.sev]};color:#fff;font-size:9pt;font-weight:600">${esc(r.label)}</span></td>
-      <td class="right" style="font-weight:${r.count > 0 ? "600" : "normal"};color:${r.count > 0 ? SEV_COLOR[r.sev] : "inherit"}">${r.count}</td>
+      <td><span class="badge severity-${r.sev}">${esc(r.label)}</span></td>
+      <td class="right" style="font-weight:${r.count > 0 ? "600" : "normal"}">${r.count}</td>
     </tr>`,
     )
     .join("");
@@ -289,7 +286,7 @@ export function htmlQaReport(job: Job, report: QaReport, shots: LabeledShot[]): 
         .join(", ");
       return `<tr>
       <td style="white-space:nowrap">
-        <span style="display:inline-block;padding:2px 8px;border-radius:3px;background:${SEV_COLOR[issue.severity]};color:#fff;font-size:8pt;font-weight:600">${esc(issue.severity.toUpperCase())}</span>
+        <span class="badge severity-${issue.severity}">${esc(issue.severity.toUpperCase())}</span>
       </td>
       <td class="mono" style="font-size:8pt;white-space:nowrap">${esc(issue.check)}</td>
       <td><strong>${esc(issue.title)}</strong><br/><span class="muted" style="font-size:8.5pt">${esc(issue.detail)}</span></td>

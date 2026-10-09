@@ -7,39 +7,77 @@ export function wrapPrint(title: string, inner: string): string {
 <meta charset="utf-8"/>
 <title>${escAttr(title)}</title>
 <style>
-  @page { size: letter; margin: 0.7in; }
+  @page { size: letter; margin: 0.65in 0.75in; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #fff; color: #1a1c1e; }
   body {
-    font-family: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
-    font-size: 11pt;
-    line-height: 1.45;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.5;
   }
-  h1 { font-size: 16pt; font-weight: 600; margin: 0 0 4pt; letter-spacing: -0.02em; }
-  h2 { font-size: 10pt; font-weight: 600; margin: 18pt 0 6pt; letter-spacing: 0.08em; text-transform: uppercase; color: #3a3e44; }
-  p { margin: 0 0 8pt; }
-  table { width: 100%; border-collapse: collapse; font-size: 10pt; }
-  th { text-align: left; font-weight: 500; border-bottom: 1px solid #1a1c1e; padding: 4pt 6pt; font-size: 8pt; letter-spacing: 0.06em; text-transform: uppercase; color: #5c6066; }
-  td { padding: 5pt 6pt; border-bottom: 1px solid #d8d8d4; vertical-align: top; }
-  .right { text-align: right; font-variant-numeric: tabular-nums; }
-  .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 9.5pt; }
-  .muted { color: #5c6066; }
-  .rule { border: 0; border-top: 1.5pt solid #1a1c1e; margin: 10pt 0 12pt; }
-  .hair { border: 0; border-top: 1px solid #c8c8c2; margin: 10pt 0; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16pt; }
-  .mark { width: 28pt; height: 28pt; background: #215e9e; color: #f7f7f3; display: flex; align-items: center; justify-content: center; font-size: 8pt; font-weight: 600; letter-spacing: 0.04em; }
-  .brand { display: flex; gap: 10pt; align-items: center; }
-  .sig { display: grid; grid-template-columns: 1fr 1fr; gap: 24pt; margin-top: 28pt; }
-  .sig .line { border-top: 1px solid #1a1c1e; margin-top: 28pt; padding-top: 6pt; font-size: 9pt; color: #5c6066; }
-  .disclaimer { font-size: 8.5pt; color: #5c6066; margin-top: 18pt; }
-  .total td { border-bottom: none; font-weight: 600; font-size: 11pt; }
-  ul { margin: 0 0 8pt; padding-left: 16pt; }
-  li { margin: 0 0 3pt; }
+  h1 { font-size: 17pt; font-weight: 700; margin: 0 0 2pt; letter-spacing: -0.03em; color: #0f1217; }
+  h2 {
+    font-size: 8.5pt; font-weight: 700; margin: 20pt 0 6pt;
+    letter-spacing: 0.12em; text-transform: uppercase; color: #215e9e;
+    border-bottom: 1.5pt solid #215e9e; padding-bottom: 3pt;
+  }
+  p { margin: 0 0 7pt; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 6pt; }
+  thead tr { background: #215e9e; color: #fff; }
+  th {
+    text-align: left; font-weight: 600; padding: 5pt 7pt;
+    font-size: 8pt; letter-spacing: 0.07em; text-transform: uppercase;
+  }
+  td { padding: 5pt 7pt; border-bottom: 0.5pt solid #e0e2e8; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f6f7fb; }
+  .right { text-align: right; font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
+  .mono { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 9pt; }
+  .muted { color: #5c6370; }
+  .rule { border: 0; border-top: 2pt solid #215e9e; margin: 10pt 0 14pt; }
+  .hair { border: 0; border-top: 0.5pt solid #c8cad0; margin: 10pt 0; }
+  .head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 16pt; margin-bottom: 0;
+  }
+  .mark {
+    width: 34pt; height: 34pt; background: #215e9e; color: #f0f4ff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9pt; font-weight: 800; letter-spacing: 0.06em;
+    border-radius: 3pt;
+  }
+  .brand { display: flex; gap: 12pt; align-items: center; }
+  .sig {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32pt; margin-top: 36pt;
+    page-break-inside: avoid;
+  }
+  .sig .line {
+    border-top: 1pt solid #1a1c1e; margin-top: 36pt; padding-top: 8pt;
+    font-size: 8.5pt; color: #5c6370;
+  }
+  .disclaimer { font-size: 8pt; color: #7c8090; margin-top: 20pt; border-top: 0.5pt solid #e0e2e8; padding-top: 8pt; }
+  .total td {
+    border-top: 1.5pt solid #215e9e; border-bottom: none;
+    font-weight: 700; font-size: 11pt; background: #eef3fa !important;
+  }
+  ul { margin: 0 0 8pt; padding-left: 18pt; }
+  li { margin: 0 0 4pt; }
+  .badge {
+    display: inline-block; padding: 2pt 7pt; border-radius: 3pt;
+    font-size: 8pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .badge-paid { background: #d4edda; color: #155724; }
+  .badge-sent { background: #d1ecf1; color: #0c5460; }
+  .badge-draft { background: #fff3cd; color: #856404; }
+  .severity-error { background: #f8d7da; color: #721c24; }
+  .severity-warn  { background: #fff3cd; color: #856404; }
+  .severity-info  { background: #d1ecf1; color: #0c5460; }
+  .severity-pass  { background: #d4edda; color: #155724; }
   @media print { .noprint { display: none !important; } }
-  .noprint { margin: 12pt 0 18pt; }
+  .noprint { margin: 10pt 0 16pt; }
   .noprint button {
-    font: 500 11pt "IBM Plex Sans", sans-serif;
-    background: #215e9e; color: #fff; border: 0; padding: 8pt 14pt; cursor: pointer;
+    font: 600 10.5pt "Segoe UI", sans-serif;
+    background: #215e9e; color: #fff; border: 0;
+    padding: 7pt 18pt; cursor: pointer; border-radius: 3pt;
   }
 </style>
 </head>

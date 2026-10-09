@@ -500,6 +500,56 @@ export function PlanMap() {
       st.setSelected(uid);
     };
 
+    // ORD-style decorator helpers
+    type VertEntry = { n: number; e: number; z: number; uid?: string };
+
+    const addFlowArrows = (
+      vertsList: VertEntry[],
+      style: { color: string; weight: number; dash?: string },
+    ) => {
+      if (vertsList.length < 2) return;
+      const step = Math.max(1, Math.floor(vertsList.length / 4));
+      for (let i = step; i < vertsList.length - 1; i += step) {
+        const a = vertsList[i];
+        const b = vertsList[i + 1] ?? vertsList[i - 1];
+        const dN = b.n - a.n;
+        const dE = b.e - a.e;
+        const angle = Math.atan2(dE, dN) * (180 / Math.PI);
+        const icon = L.divIcon({
+          className: "ord-flow-arrow",
+          html: `<svg width="10" height="10" viewBox="0 0 10 10" style="transform:rotate(${angle}deg)"><path d="M5 1 L8 7 L5 5.5 L2 7 Z" fill="${style.color}" opacity="0.9"/></svg>`,
+          iconSize: [10, 10],
+          iconAnchor: [5, 5],
+        });
+        lines.addLayer(L.marker(latlng(a.n, a.e), { icon, interactive: false }));
+      }
+    };
+
+    const addOvTicks = (
+      vertsList: VertEntry[],
+      style: { color: string; weight: number; dash?: string },
+    ) => {
+      const step = Math.max(2, Math.floor(vertsList.length / 6));
+      for (let i = step; i < vertsList.length - 1; i += step) {
+        const a = vertsList[i - 1];
+        const b = vertsList[i];
+        const len = Math.hypot(b.n - a.n, b.e - a.e) || 1;
+        const pn = (b.e - a.e) / len;
+        const pe = -(b.n - a.n) / len;
+        const half = 3;
+        const m = vertsList[i];
+        const t1 = latlng(m.n + pn * half, m.e + pe * half);
+        const t2 = latlng(m.n - pn * half, m.e - pe * half);
+        const tick = L.polyline([t1, t2], {
+          color: style.color,
+          weight: 1.2,
+          opacity: 0.7,
+          interactive: false,
+        });
+        lines.addLayer(tick);
+      }
+    };
+
     let vertBudget = 1800;
     const drawChain = (chain: Chain) => {
       const vertsList = chainVertices(chain);
@@ -575,6 +625,19 @@ export function PlanMap() {
         { sticky: true, opacity: 0.95, className: "ord-tip" },
       );
       lines.addLayer(poly);
+
+      // ORD-style line decorators (zoom-gated)
+      if (mapZoom >= 16) {
+        const drainCodes = new Set(["DL", "WF", "FL", "DR", "DI", "TS"]);
+        const ovCodes = new Set(["OV"]);
+        const code = chain.code.toUpperCase().replace(/\d+$/, "");
+        if (drainCodes.has(code) && vertsList.length >= 3) {
+          addFlowArrows(vertsList, style);
+        }
+        if (ovCodes.has(code) && vertsList.length >= 4) {
+          addOvTicks(vertsList, style);
+        }
+      }
 
       for (let vi = 0; vi < vertsList.length; vi++) {
         if (vertBudget <= 0) break;

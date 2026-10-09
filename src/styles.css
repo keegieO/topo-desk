@@ -123,6 +123,11 @@
     border: none;
   }
 
+  .ord-flow-arrow {
+    background: none !important;
+    border: none !important;
+  }
+
   .ord-mark {
     display: flex;
     align-items: center;
