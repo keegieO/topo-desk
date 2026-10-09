@@ -1,11 +1,18 @@
+import { useState } from "react";
 import { JobForm } from "@/components/job-form";
 import { SERVICES, WORKFLOW, COVERAGE, SEND_LIST, DELIVER_LIST } from "@/lib/company";
 import { FIRMS, FIRM_KIND } from "@/lib/clients";
-import { useFirm, firmCityLine } from "@/lib/firm";
+import { useFirm, firmCityLine, type FirmRates } from "@/lib/firm";
 
 export function CrewPortal() {
   const firm = useFirm();
-  const rates = firm.rates;  return (
+  const rates = firm.rates;
+  const [calcMiles, setCalcMiles] = useState(1);
+  const [calcHours, setCalcHours] = useState(0);
+  const [calcPlan, setCalcPlan] = useState(false);
+  const [calcRush, setCalcRush] = useState(false);
+  const [calcKind, setCalcKind] = useState<"conventional" | "breakline">("conventional");
+  return (
     <div className="flex flex-col gap-10">
       <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
         <div>
@@ -129,6 +136,44 @@ export function CrewPortal() {
         </dl>
       </section>
 
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
+        <p className="kicker">Rate calculator</p>
+        <h2 className="mt-1 font-display text-lg font-medium">Get an instant quote</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Job type</label>
+            <select value={calcKind} onChange={e => setCalcKind(e.target.value as any)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <option value="conventional">Conventional reduction</option>
+              <option value="breakline">GeoLine Solutions extraction</option>
+              <option value="lidar">LiDAR classification</option>
+              <option value="planimetric">Planimetrics</option>
+            </select>
+          </div>
+          {/* miles slider */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Corridor miles <span className="font-mono text-muted-foreground">{calcMiles}</span></label>
+            <input type="range" min={0.1} max={20} step={0.1} value={calcMiles} onChange={e => setCalcMiles(Number(e.target.value))} className="w-full" />
+          </div>
+          {/* hours (for conventional) */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Reduction hours <span className="font-mono text-muted-foreground">{calcHours}</span></label>
+            <input type="range" min={0} max={40} step={0.5} value={calcHours} onChange={e => setCalcHours(Number(e.target.value))} className="w-full" />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={calcPlan} onChange={e => setCalcPlan(e.target.checked)} />
+            Add planimetrics
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={calcRush} onChange={e => setCalcRush(e.target.checked)} />
+            Rush (1.35×)
+          </label>
+        </div>
+        {/* Live quote result */}
+        <div className="mt-5 rounded-md bg-muted/40 p-4 font-mono">
+          <QuoteResult kind={calcKind} miles={calcMiles} hours={calcHours} plan={calcPlan} rush={calcRush} rates={rates} />
+        </div>
+      </section>
+
       <JobForm
         kicker="Send a job"
         title="Crew drop-off"
@@ -153,6 +198,37 @@ function Rate({ k, v }: { k: string; v: string }) {
     <div className="flex items-baseline justify-between gap-3">
       <dt className="text-muted-foreground">{k}</dt>
       <dd>{v}</dd>
+    </div>
+  );
+}
+
+function QuoteResult({ kind, miles, hours, plan, rush, rates }: {
+  kind: string; miles: number; hours: number; plan: boolean; rush: boolean;
+  rates: FirmRates;
+}) {
+  const lines: { desc: string; amount: number }[] = [];
+  if (kind === "conventional" && hours > 0) lines.push({ desc: `Reduction ${hours}h × $${rates.conventionalHr}/hr`, amount: hours * rates.conventionalHr });
+  if (kind === "breakline") lines.push({ desc: `GeoLine Solutions ${miles} mi × $${rates.breaklineMile.toLocaleString()}/mi`, amount: miles * rates.breaklineMile });
+  if (kind === "lidar") lines.push({ desc: `LiDAR classification ${miles} mi × $${rates.lidarClassMile.toLocaleString()}/mi`, amount: miles * rates.lidarClassMile });
+  if (kind === "planimetric") lines.push({ desc: `Planimetrics ${miles} mi × $${rates.planimetricMile.toLocaleString()}/mi`, amount: miles * rates.planimetricMile });
+  if (plan && kind !== "planimetric") lines.push({ desc: `Planimetrics ${miles} mi × $${rates.planimetricMile.toLocaleString()}/mi`, amount: miles * rates.planimetricMile });
+  lines.push({ desc: "INDOT coding + ORD book", amount: rates.codingJob });
+  let total = lines.reduce((a, l) => a + l.amount, 0);
+  if (rush) total *= 1.35;
+  return (
+    <div>
+      {lines.map((l, i) => (
+        <div key={i} className="flex justify-between text-sm text-muted-foreground">
+          <span>{l.desc}</span>
+          <span>${l.amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+        </div>
+      ))}
+      {rush && <div className="flex justify-between text-sm text-muted-foreground"><span>Rush 1.35×</span><span></span></div>}
+      <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-semibold">
+        <span>Estimated total</span>
+        <span>${total.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+      </div>
+      <p className="mt-1 text-[0.6875rem] text-muted-foreground">Estimate only. Actual quote on invoice after scope is confirmed.</p>
     </div>
   );
 }

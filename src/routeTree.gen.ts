@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BillingRouteImport } from './routes/billing'
+import { Route as BoardRouteImport } from './routes/board'
 import { Route as CodesRouteImport } from './routes/codes'
 import { Route as CrewRouteImport } from './routes/crew'
 import { Route as DeliverRouteImport } from './routes/deliver'
@@ -28,6 +29,11 @@ const IndexRoute = IndexRouteImport.update({
 const BillingRoute = BillingRouteImport.update({
   id: '/billing',
   path: '/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BoardRoute = BoardRouteImport.update({
+  id: '/board',
+  path: '/board',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CodesRoute = CodesRouteImport.update({
@@ -74,6 +80,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/billing': typeof BillingRoute
+  '/board': typeof BoardRoute
   '/codes': typeof CodesRoute
   '/crew': typeof CrewRoute
   '/deliver': typeof DeliverRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/billing': typeof BillingRoute
+  '/board': typeof BoardRoute
   '/codes': typeof CodesRoute
   '/crew': typeof CrewRoute
   '/deliver': typeof DeliverRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/billing': typeof BillingRoute
+  '/board': typeof BoardRoute
   '/codes': typeof CodesRoute
   '/crew': typeof CrewRoute
   '/deliver': typeof DeliverRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/billing'
+    | '/board'
     | '/codes'
     | '/crew'
     | '/deliver'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/billing'
+    | '/board'
     | '/codes'
     | '/crew'
     | '/deliver'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/billing'
+    | '/board'
     | '/codes'
     | '/crew'
     | '/deliver'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BillingRoute: typeof BillingRoute
+  BoardRoute: typeof BoardRoute
   CodesRoute: typeof CodesRoute
   CrewRoute: typeof CrewRoute
   DeliverRoute: typeof DeliverRoute
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/billing'
       fullPath: '/billing'
       preLoaderRoute: typeof BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/board': {
+      id: '/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof BoardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/codes': {
@@ -238,6 +258,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BillingRoute: BillingRoute,
+  BoardRoute: BoardRoute,
   CodesRoute: CodesRoute,
   CrewRoute: CrewRoute,
   DeliverRoute: DeliverRoute,

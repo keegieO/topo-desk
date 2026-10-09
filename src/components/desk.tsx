@@ -34,6 +34,21 @@ export function Desk() {
   const weekHours = jobs.reduce((a, j) => a + j.timeLog.reduce((x, t) => x + t.hours, 0), 0);
   const clients = rollupClients(jobs);
   const dueSoon = useMemo(() => dueBoard(jobs), [jobs]);
+  const utilization = useMemo(() => {
+    const byKind: Record<string, number> = {};
+    const byClient: Record<string, number> = {};
+    let total = 0;
+    let billable = 0;
+    for (const job of jobs) {
+      for (const t of job.timeLog) {
+        byKind[t.kind] = (byKind[t.kind] ?? 0) + t.hours;
+        byClient[job.client || "Unknown"] = (byClient[job.client || "Unknown"] ?? 0) + t.hours;
+        total += t.hours;
+        if (t.kind === "extract" || t.kind === "qa") billable += t.hours;
+      }
+    }
+    return { byKind, byClient, total, billable, nonBillable: total - billable };
+  }, [jobs]);
   const live = jobs.find((j) => j.id === activeId) ?? jobs[0];
 
   function packageLive() {
@@ -175,6 +190,56 @@ export function Desk() {
             </Button>
           </div>
         </aside>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
+        <p className="kicker">Utilization</p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Total hours</p>
+            <p className="mt-0.5 font-mono text-2xl tabular-nums">{utilization.total}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Billable</p>
+            <p className="mt-0.5 font-mono text-2xl tabular-nums text-ok">{utilization.billable}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Non-billable</p>
+            <p className="mt-0.5 font-mono text-2xl tabular-nums">{utilization.nonBillable}</p>
+          </div>
+        </div>
+        {utilization.total > 0 && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="kicker mt-0">By type</p>
+              <ul className="mt-2 flex flex-col gap-1">
+                {Object.entries(utilization.byKind).map(([k, h]) => (
+                  <li key={k} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round((h / utilization.total) * 80)}px` }} />
+                      <span className="text-xs text-muted-foreground capitalize">{k}</span>
+                    </div>
+                    <span className="font-mono text-xs tabular-nums">{h}h</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="kicker mt-0">By client</p>
+              <ul className="mt-2 flex flex-col gap-1">
+                {Object.entries(utilization.byClient).sort((a,b) => b[1]-a[1]).slice(0,6).map(([c, h]) => (
+                  <li key={c} className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground truncate">{c}</span>
+                    <span className="font-mono text-xs tabular-nums">{h}h</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+        {utilization.total === 0 && (
+          <p className="mt-3 text-xs text-muted-foreground">Log time on job tickets to see utilization.</p>
+        )}
       </section>
 
       <JobForm kicker="New job" title="Add a job" blurb="" />

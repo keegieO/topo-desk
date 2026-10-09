@@ -1,4 +1,5 @@
 import { DISCLAIMER, OUT_OF_SCOPE, DELIVER_LIST, SEND_LIST } from "./company";
+import type { QaReport } from "./qa";
 import { firmAddress, firmCityLine, getFirm, type FirmProfile } from "./firm";
 import { invoiceNumber, KIND_LABEL, quoteJob, quoteLines, TIME_LABEL, type Job } from "./jobs";
 import { resolveFeature, type LabeledShot } from "./label";
@@ -239,4 +240,112 @@ export function htmlTransmittal(opts: {
   <h2>Deliverables in this package</h2>
   <ul>${DELIVER_LIST.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
   ${disclaimer()}`;
+}
+
+const SEV_COLOR: Record<string, string> = {
+  error: "#c0392b",
+  warn: "#d68910",
+  info: "#1a5276",
+};
+
+export function htmlQaReport(job: Job, report: QaReport, shots: LabeledShot[]): string {
+  const f = getFirm();
+
+  // Build a map from uid → point number for resolving shotUids
+  const uidToPoint = new Map<string, string>();
+  for (const s of shots) {
+    uidToPoint.set(s.uid, s.point);
+  }
+
+  if (report.issues.length === 0) {
+    return `${head(f, "QA Report", job.des ? `Des. ${job.des}` : undefined)}
+  ${jobBlock(job)}
+  <div style="text-align:center;padding:2em 0;font-size:18pt;color:#1e8449;font-weight:600">Pass — 0 findings</div>`;
+  }
+
+  // Summary table
+  const summaryRows = [
+    { label: "Errors", count: report.errors, sev: "error" },
+    { label: "Warnings", count: report.warns, sev: "warn" },
+    { label: "Infos", count: report.infos, sev: "info" },
+  ]
+    .map(
+      (r) => `<tr>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:3px;background:${SEV_COLOR[r.sev]};color:#fff;font-size:9pt;font-weight:600">${esc(r.label)}</span></td>
+      <td class="right" style="font-weight:${r.count > 0 ? "600" : "normal"};color:${r.count > 0 ? SEV_COLOR[r.sev] : "inherit"}">${r.count}</td>
+    </tr>`,
+    )
+    .join("");
+
+  // Sort issues: errors first, then warns, then infos
+  const ORDER: Record<string, number> = { error: 0, warn: 1, info: 2 };
+  const sorted = [...report.issues].sort((a, b) => (ORDER[a.severity] ?? 3) - (ORDER[b.severity] ?? 3));
+
+  const issueRows = sorted
+    .map((issue) => {
+      const pts = issue.shotUids
+        .map((uid) => uidToPoint.get(uid) ?? uid)
+        .filter(Boolean)
+        .join(", ");
+      return `<tr>
+      <td style="white-space:nowrap">
+        <span style="display:inline-block;padding:2px 8px;border-radius:3px;background:${SEV_COLOR[issue.severity]};color:#fff;font-size:8pt;font-weight:600">${esc(issue.severity.toUpperCase())}</span>
+      </td>
+      <td class="mono" style="font-size:8pt;white-space:nowrap">${esc(issue.check)}</td>
+      <td><strong>${esc(issue.title)}</strong><br/><span class="muted" style="font-size:8.5pt">${esc(issue.detail)}</span></td>
+      <td class="mono muted" style="font-size:8pt;white-space:nowrap">${esc(pts)}</td>
+    </tr>`;
+    })
+    .join("");
+
+  return `${head(f, "QA Report", job.des ? `Des. ${job.des}` : undefined)}
+  ${jobBlock(job)}
+  <h2>Summary</h2>
+  <table><tbody>${summaryRows}</tbody></table>
+  <h2>Findings</h2>
+  <table>
+    <thead><tr><th>Sev.</th><th>Check</th><th>Finding</th><th>Points</th></tr></thead>
+    <tbody>${issueRows}</tbody>
+  </table>`;
+}
+
+const CONTROL_CODES = new Set(["PRE", "PBMK", "PMON", "TRAV", "PIDT", "CK", "CHECK", "CHK"]);
+
+export function htmlControlReport(job: Job, shots: LabeledShot[]): string {
+  const f = getFirm();
+
+  const controls = shots
+    .filter((s) => CONTROL_CODES.has(s.codeToken.toUpperCase()))
+    .sort((a, b) => {
+      const na = Number(a.point);
+      const nb = Number(b.point);
+      const aNum = isNaN(na);
+      const bNum = isNaN(nb);
+      if (aNum && bNum) return a.point.localeCompare(b.point);
+      if (aNum) return 1;
+      if (bNum) return -1;
+      return na - nb;
+    });
+
+  const rows = controls
+    .map(
+      (s) => `<tr>
+      <td class="mono">${esc(s.point)}</td>
+      <td class="mono">${esc(s.codeToken.toUpperCase())}</td>
+      <td class="mono right">${s.northing.toFixed(4)}</td>
+      <td class="mono right">${s.easting.toFixed(4)}</td>
+      <td class="mono right">${s.elevation.toFixed(2)}</td>
+      <td>${esc(s.description)}</td>
+    </tr>`,
+    )
+    .join("");
+
+  return `${head(f, "Control report", job.des ? `Des. ${job.des}` : undefined)}
+  ${jobBlock(job)}
+  <table>
+    <thead><tr><th>Pt #</th><th>Code</th><th class="right">Northing</th><th class="right">Easting</th><th class="right">Elevation</th><th>Description</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="6" class="muted">No control points found.</td></tr>`}</tbody>
+  </table>
+  <p class="muted" style="margin-top:1em;font-size:9pt">${controls.length} control point${controls.length === 1 ? "" : "s"}</p>
+  ${sig(f, job.client)}`;
 }

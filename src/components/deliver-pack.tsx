@@ -10,7 +10,7 @@ import { resolveFeature } from "@/lib/label";
 import { buildExport } from "@/lib/export";
 import { allChains, buildControlCsv, buildDxf, buildLandXml, cadFilenames } from "@/lib/cad-export";
 import { chainVertices, extractsAsShots } from "@/lib/chains";
-import { htmlInvoice, htmlProposal, htmlSow, htmlTransmittal } from "@/lib/paper";
+import { htmlInvoice, htmlProposal, htmlSow, htmlTransmittal, htmlQaReport, htmlControlReport } from "@/lib/paper";
 import { projectAlignment, staOffCsv } from "@/lib/align";
 import { htmlPlotSheet } from "@/lib/sheet";
 import { openDocument, printHtml } from "@/lib/print";
@@ -150,6 +150,22 @@ export function DeliverPack() {
         contours: useBook.getState().terrain?.contours,
       }),
     );
+  }
+
+  function printQa() {
+    if (!shots.length) {
+      toast.error("No field book");
+      return;
+    }
+    printHtml(`${job?.des || "job"}_qa_report`, htmlQaReport(job!, qa, shots));
+  }
+
+  function printControl() {
+    if (!shots.length) {
+      toast.error("No field book");
+      return;
+    }
+    printHtml(`${job?.des || "job"}_control_report`, htmlControlReport(job!, shots));
   }
 
   function dlSta() {
@@ -323,6 +339,20 @@ export function DeliverPack() {
             onClick={() => printHtml(`${job.des || "job"} transmittal`, htmlTransmittal({ job, shots, remaps }))}
           >
             Transmittal
+          </Button>
+          <Button
+            variant="outline"
+            onClick={printQa}
+            disabled={!shots.length}
+          >
+            QA report
+          </Button>
+          <Button
+            variant="outline"
+            onClick={printControl}
+            disabled={!shots.length}
+          >
+            Control report
           </Button>
           <Button
             variant="outline"

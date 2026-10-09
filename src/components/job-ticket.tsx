@@ -45,6 +45,25 @@ export function JobTicket({ job }: { job: Job }) {
     toast.success(`Opened ${job.des || job.name}`);
   }
 
+  function draftEmail() {
+    const subject = encodeURIComponent(`[GeoLine Solutions] ${job.des ? `Des. ${job.des} — ` : ""}${job.name} — Files Ready`);
+    const body = encodeURIComponent(
+      `Hi ${job.pm || job.client || "PM"},\n\n` +
+      `Your extraction package is ready for Des. ${job.des || job.name}.\n\n` +
+      `Deliverables in this package:\n` +
+      `— Labeled PNEZD field book (ORD format)\n` +
+      `— DXF linework (INDOT coded)\n` +
+      `— LandXML surface\n` +
+      `— Control point CSV\n` +
+      `— Extraction transmittal (PDF)\n\n` +
+      `Invoice ${invoiceNumber(job)} is attached. Terms net 30.\n\n` +
+      `Please review and confirm receipt.\n\n` +
+      `Thanks,\nGeoLine Solutions\n`
+    );
+    const to = job.email ? encodeURIComponent(job.email) : "";
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`);
+  }
+
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_16rem]">
@@ -99,6 +118,13 @@ export function JobTicket({ job }: { job: Job }) {
           >
             Package
           </Link>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={draftEmail}
+        >
+          Draft email
         </Button>
         <Button size="sm" variant="outline" asChild>
           <Link to="/billing" onClick={() => setActive(job.id)}>
