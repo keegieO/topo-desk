@@ -6,40 +6,54 @@
   --font-display: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  --color-background: #d8d8d4;
-  --color-foreground: #1a1c1e;
-  --color-card: #f3f3ef;
-  --color-card-foreground: #1a1c1e;
-  --color-popover: #f7f7f3;
-  --color-popover-foreground: #1a1c1e;
-  --color-primary: #215e9e;
-  --color-primary-foreground: #f7f7f3;
-  --color-secondary: #e6e6e0;
-  --color-secondary-foreground: #1a1c1e;
-  --color-muted: #e6e6e0;
-  --color-muted-foreground: #5c6066;
-  --color-accent: #e2e8ef;
-  --color-accent-foreground: #1a1c1e;
-  --color-destructive: #8a3228;
-  --color-border: #c8c8c2;
-  --color-input: #c8c8c2;
-  --color-ring: #215e9e;
-  --color-ok: #2c5a45;
-  --color-warn: #8a4b1f;
-  --color-ribbon: #ecece8;
-  --color-title: #e4e4e0;
-  --color-cad: #1c241c;
-  --color-level: #215e9e;
-  --color-level-foreground: #f7f7f3;
+  /* Page: warm engineering-paper tone with subtle texture gradient */
+  --color-background: #eeeae4;
+  --color-foreground: #111416;
+  /* Cards: bright, lifted above background */
+  --color-card: #fafaf7;
+  --color-card-foreground: #111416;
+  --color-popover: #fafaf7;
+  --color-popover-foreground: #111416;
+  /* Primary: rich INDOT blue */
+  --color-primary: #1a5490;
+  --color-primary-foreground: #f5f5f2;
+  /* Secondary / muted: toned down */
+  --color-secondary: #e4e0d8;
+  --color-secondary-foreground: #111416;
+  --color-muted: #e4e0d8;
+  --color-muted-foreground: #5a5f66;
+  --color-accent: #dce6f0;
+  --color-accent-foreground: #111416;
+  --color-destructive: #8a2828;
+  /* Borders: subtle but crisp */
+  --color-border: #ccc8c0;
+  --color-input: #ccc8c0;
+  --color-ring: #1a5490;
+  /* Status */
+  --color-ok: #265c3a;
+  --color-warn: #884b18;
+  /* UI surfaces */
+  --color-ribbon: #f0ede8;
+  /* Title bar: dark navy — strong hierarchy contrast */
+  --color-title: #0f1e30;
+  --color-title-foreground: #e8edf2;
+  --color-title-muted: #8fa3b8;
+  --color-cad: #131d13;
+  --color-level: #1a5490;
+  --color-level-foreground: #f5f5f2;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 9px;
+  --radius-xl: 13px;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --motion-quick: 150ms;
-  --motion-fast: 250ms;
+  --motion-quick: 120ms;
+  --motion-fast: 220ms;
+
+  /* Elevation shadows */
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.07), 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-popover: 0 4px 16px rgb(0 0 0 / 0.12), 0 1px 4px rgb(0 0 0 / 0.06);
 }
 
 @layer base {
@@ -58,7 +72,15 @@
   }
 
   body {
-    background: var(--color-background);
+    background-color: var(--color-background);
+    /* Subtle ruled-paper texture — very light, just enough grain */
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 27px,
+        rgb(0 0 0 / 0.025) 28px
+      );
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
@@ -75,10 +97,16 @@
 }
 
 @layer components {
+  /* Cards get a subtle lift by default */
+  .rounded-lg.border.bg-card,
+  .rounded-md.border.bg-card {
+    box-shadow: var(--shadow-card);
+  }
+
   .kicker {
     font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.14em;
+    font-weight: 600;
+    letter-spacing: 0.11em;
     text-transform: uppercase;
     color: var(--color-muted-foreground);
   }

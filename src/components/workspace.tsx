@@ -467,11 +467,11 @@ function TitleBar({ fileName }: { fileName: string }) {
         <Mark />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
+        <p className="truncate text-sm font-medium text-[#e8edf2]">
           {COMPANY.name} · {job?.name || (fileName ? fileName.replace(/\.(csv|txt)$/i, ".dgn") : "Extract")}
         </p>
       </div>
-      <span className="hidden font-mono text-xs text-muted-foreground lg:inline">
+      <span className="hidden font-mono text-xs text-[#8fa3b8] lg:inline">
         Des. {job?.des || SR67_SITE.des}
       </span>
       <AuthSlot compact />

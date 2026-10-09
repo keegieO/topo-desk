@@ -65,12 +65,16 @@ function Login() {
     <main className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1fr)_28rem]">
       <section className="hidden flex-col justify-between border-r border-border bg-title px-10 py-10 lg:flex">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary text-[0.625rem] font-semibold tracking-wide text-primary-foreground">
-            BL
+          <span className="flex h-8 w-8 items-center justify-center rounded bg-[rgb(255_255_255/0.1)] text-[#7eb8f0] ring-1 ring-[rgb(255_255_255/0.08)]">
+            <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden fill="none">
+              <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.25" />
+              <circle cx="8" cy="8" r="1.25" fill="currentColor" />
+              <path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+            </svg>
           </span>
           <span>
-            <span className="block text-sm font-medium leading-tight">{COMPANY.name}</span>
-            <span className="block text-[0.6875rem] text-muted-foreground">{COMPANY.city}</span>
+            <span className="block text-sm font-medium leading-tight text-[#e8edf2]">{COMPANY.name}</span>
+            <span className="block text-[0.6875rem] text-[#8fa3b8]">{COMPANY.city}</span>
           </span>
         </Link>
         <div className="max-w-md">
@@ -82,7 +86,7 @@ function Login() {
             {COMPANY.line} Sign in to your shop — jobs, field books, QA, and ORD packages stay on your account.
           </p>
         </div>
-        <p className="font-mono text-[0.6875rem] text-muted-foreground">
+        <p className="font-mono text-[0.6875rem] text-[#8fa3b8]">
           {COMPANY.hours} · {COMPANY.phone}
         </p>
       </section>
@@ -90,8 +94,12 @@ function Login() {
       <section className="flex flex-col justify-center px-6 py-10 sm:px-10">
         <div className="mx-auto w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary text-[0.625rem] font-semibold text-primary-foreground">
-              BL
+            <span className="flex h-7 w-7 items-center justify-center rounded bg-primary/10 text-primary ring-1 ring-primary/20">
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden fill="none">
+                <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.25" />
+                <circle cx="8" cy="8" r="1.25" fill="currentColor" />
+                <path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+              </svg>
             </span>
             <span className="text-sm font-medium">{COMPANY.name}</span>
           </div>
