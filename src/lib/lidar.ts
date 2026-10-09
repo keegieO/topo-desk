@@ -32,99 +32,44 @@ function roadZ(along: number, offset: number): number {
   return 953.55 + along * 0.00115 - pavement * 0.012 - Math.max(0, Math.abs(offset) - 18) * 0.04;
 }
 
-export function generateLidarCloud(count = 14000): LidarPt[] {
-  const out: LidarPt[] = [];
-  const half = Math.floor(count * 0.72);
-  for (let i = 0; i < half; i++) {
-    const along = -1200 + hash(i) * 2400;
-    const lane = hash(i + 3);
-    let offset: number;
-    let cls: LidarClass;
-    let zOff = 0;
-    if (lane < 0.5) {
-      offset = (hash(i + 7) - 0.5) * 44;
-      cls = "ground";
-      zOff = 0;
-    } else if (lane < 0.72) {
-      offset = 50 + hash(i + 11) * 70;
-      if (hash(i + 13) < 0.5) offset *= -1;
-      cls = "veg";
-      zOff = 2 + hash(i + 17) * 16;
-    } else if (lane < 0.82) {
-      offset = (hash(i + 19) < 0.5 ? -1 : 1) * (85 + hash(i + 23) * 35);
-      cls = "building";
-      zOff = 8 + hash(i + 29) * 12;
-    } else if (lane < 0.94) {
-      offset = -42 + (hash(i + 31) - 0.5) * 5;
-      cls = "wire";
-      zOff = 18 + hash(i + 37) * 6;
-    } else {
-      offset = (hash(i + 41) - 0.5) * 140;
-      cls = "noise";
-      zOff = hash(i + 43) * 28;
-    }
-    const p = projectOffset(N0, E0, along, offset, MAIN_AZ);
-    out.push({ n: p.n, e: p.e, z: roadZ(along, offset) + zOff, cls });
+/**
+ * Synthetic point cloud generation is DISABLED.
+ *
+ * Fake geometry must never appear over a real project. This function is kept as
+ * a stub so any stale import doesn't break the build, but it always returns an
+ * empty array and logs a warning. The LAS/LAZ parser (`las.ts`) and the
+ * LidarClass / LidarPt types above are unaffected.
+ */
+export function generateLidarCloud(_count?: number): LidarPt[] {
+  if (typeof console !== "undefined") {
+    console.warn("[lidar] generateLidarCloud() is disabled — synthetic point clouds are not allowed on real projects.");
   }
-  for (let i = half; i < count; i++) {
-    const along = -700 + hash(i) * 1400;
-    const lane = hash(i + 5);
-    let offset: number;
-    let cls: LidarClass;
-    let zOff = 0;
-    if (lane < 0.55) {
-      offset = (hash(i + 9) - 0.5) * 40;
-      cls = "ground";
-    } else if (lane < 0.78) {
-      offset = 48 + hash(i + 15) * 50;
-      if (hash(i + 21) < 0.5) offset *= -1;
-      cls = "veg";
-      zOff = 2 + hash(i + 27) * 14;
-    } else if (lane < 0.88) {
-      offset = (hash(i + 33) < 0.5 ? -1 : 1) * (80 + hash(i + 39) * 30);
-      cls = "building";
-      zOff = 7 + hash(i + 45) * 10;
-    } else {
-      offset = (hash(i + 51) - 0.5) * 100;
-      cls = "noise";
-      zOff = hash(i + 57) * 20;
-    }
-    const p = projectOffset(N0, E0, along, offset, CROSS_AZ);
-    out.push({ n: p.n, e: p.e, z: roadZ(0, offset) + along * 0.0004 + zOff, cls });
-  }
-  return out;
-}
-
-let cached: LidarPt[] | null = null;
-let grid: Map<string, LidarPt[]> | null = null;
-let gridFor: LidarPt[] | null = null;
-const CELL = 25;
-
-function cellKey(n: number, e: number): string {
-  return `${Math.floor(n / CELL)}:${Math.floor(e / CELL)}`;
-}
-
-function ensureGrid(cloud: LidarPt[]) {
-  if (grid && gridFor === cloud) return;
-  grid = new Map();
-  gridFor = cloud;
-  for (const p of cloud) {
-    const k = cellKey(p.n, p.e);
-    const arr = grid.get(k);
-    if (arr) arr.push(p);
-    else grid.set(k, [p]);
-  }
+  return [];
 }
 
 export function lidarCloud(): LidarPt[] {
-  if (!cached) cached = generateLidarCloud();
-  return cached;
+  return [];
 }
 
-export function displayCloud(userPts: LidarPt[], originN: number, originE: number): LidarPt[] {
-  if (userPts.length) return userPts;
-  if (Math.hypot(originN - N0, originE - E0) < 40_000) return lidarCloud();
-  return [];
+export function displayCloud(userPts: LidarPt[], _originN?: number, _originE?: number): LidarPt[] {
+  return userPts;
+}
+
+const CELL = 20; // grid cell size in survey feet
+
+let grid: Map<string, LidarPt[]> | null = null;
+let gridCloud: LidarPt[] | null = null;
+
+function ensureGrid(pts: LidarPt[]): void {
+  if (grid && gridCloud === pts) return;
+  grid = new Map();
+  gridCloud = pts;
+  for (const p of pts) {
+    const key = `${Math.floor(p.n / CELL)}:${Math.floor(p.e / CELL)}`;
+    let bucket = grid.get(key);
+    if (!bucket) { bucket = []; grid.set(key, bucket); }
+    bucket.push(p);
+  }
 }
 
 export function snapLidar(

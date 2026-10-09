@@ -1,22 +1,11 @@
 /**
  * Live-preview sign-in popup — server-only (NEVER import from the client).
  *
- * The sandbox preview runs the app in a partitioned iframe, so OAuth must happen
- * in a top-level popup (first-party cookies). This handler is the ENTIRE popup
- * document — no React shell:
- *
- *   Phase 1 (`?providerId=…`): start OAuth server-side and 302 straight to the
- *     broker / upstream login page. The popup never paints the app.
- *   Phase 2 (`?done=1`): after the broker round-trip, emit a tiny HTML page that
- *     posts the session token to the opener and closes. No SPA hydrate, no
- *     server-fn round-trip.
- *
- * Wired automatically by the Vite `authPopupPlugin` in `vite.config.ts` during
- * `npm run dev` (live preview). Do NOT create `src/routes/auth/popup.tsx` — a
- * React route here paints the full app shell in the popup. The opener lives in
- * `client.ts` (`signIn` → `openSignInPopup`).
+ * OAuth provider sign-in has been removed; this handler is kept as a stub
+ * so the Vite `authPopupPlugin` wiring does not break. Any request to
+ * `/auth/popup` immediately posts an error back to the opener and closes.
  */
-import { auth, SESSION_TOKEN_COOKIE } from "./server";
+import { SESSION_TOKEN_COOKIE } from "./server";
 
 /** Message shape the popup posts to the opener (must match `client.ts`). */
 type PopupMessage = {
@@ -51,65 +40,12 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
     });
   }
 
-  const providerId = url.searchParams.get("providerId")?.trim();
-  if (!providerId) {
-    return new Response("Missing providerId", {
-      status: 400,
-      headers: { "content-type": "text/plain; charset=utf-8" },
-    });
-  }
-
-  // Stay first-party for the callback so the session cookie lands in THIS popup.
-  const back = `${url.origin}/auth/popup?done=1`;
-  try {
-    const apiRes = await auth.api.signInWithOAuth2({
-      body: {
-        providerId,
-        callbackURL: back,
-        errorCallbackURL: `${back}&error=1`,
-      },
-      // Forward the preview host so Better Auth derives the correct baseURL /
-      // redirect_uri for the dynamic `*.grok-sandbox.com` origin.
-      headers: request.headers,
-      asResponse: true,
-    });
-
-    if (!apiRes.ok) {
-      const detail = await apiRes.text().catch(() => "");
-      return completionResponse({
-        source: "grok-auth-popup",
-        token: null,
-        error: detail || `oauth_init_failed_${apiRes.status}`,
-      });
-    }
-
-    const body = (await apiRes.json().catch(() => null)) as {
-      url?: string;
-    } | null;
-    const location = body?.url;
-    if (!location) {
-      return completionResponse({
-        source: "grok-auth-popup",
-        token: null,
-        error: "oauth_init_missing_url",
-      });
-    }
-
-    // 302 to the broker (which headlessly forwards to Google/X). Forward any
-    // Set-Cookie (OAuth state / PKCE) so the callback can complete in this popup.
-    const headers = new Headers({ location, "cache-control": "no-store" });
-    for (const cookie of apiRes.headers.getSetCookie()) {
-      headers.append("set-cookie", cookie);
-    }
-    return new Response(null, { status: 302, headers });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "oauth_init_threw";
-    return completionResponse({
-      source: "grok-auth-popup",
-      token: null,
-      error: message,
-    });
-  }
+  // OAuth providers are not configured — immediately return an error.
+  return completionResponse({
+    source: "grok-auth-popup",
+    token: null,
+    error: "oauth_not_configured",
+  });
 }
 
 function completionResponse(message: PopupMessage): Response {

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "VITE_AUTH_ENABLED=false vite build",
+  "buildCommand": "vite build",
   "outputDirectory": ".vercel/output",
   "framework": null
 }

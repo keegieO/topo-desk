@@ -1,6 +1,9 @@
 node_modules/
 dist/
 screenshots/
+artifacts/
+attachments/
+.grok/
 .vercel/output/
 .project_id
 .github_repo
