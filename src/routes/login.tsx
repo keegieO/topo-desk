@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { COMPANY } from "@/lib/company";
 
-export const Route = createFileRoute("/login")({ component: Login });
+/**
+ * Probe whether the database is reachable. Returns null on success, or a
+ * short user-facing message on failure. Runs server-side so the client
+ * gets a clear banner instead of a cryptic auth error.
+ */
+const checkDb = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    await sql`select 1`;
+    return null;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("DATABASE_URL")) {
+      return "DATABASE_URL is not set — add a Neon connection string and BETTER_AUTH_SECRET in Vercel → Settings → Environment Variables, then redeploy.";
+    }
+    return `Database unavailable: ${msg}`;
+  }
+});
+
+export const Route = createFileRoute("/login")({
+  component: Login,
+  loader: async () => ({ dbError: await checkDb() }),
+});
 
 function Login() {
+  const { dbError } = Route.useLoaderData();
   const { user, isPending } = useCurrentUserState();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +135,13 @@ function Login() {
             {mode === "in" ? "Shop floor, extract, and billing." : "Email and password, stored on this app."}
           </p>
 
+          {dbError ? (
+            <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <p className="font-medium">Database not configured</p>
+              <p className="mt-1 text-destructive/80">{dbError}</p>
+            </div>
+          ) : null}
+
           {authEnabled ? (
             <div className="mt-6 flex flex-col gap-2">
               {GROK_PROVIDERS.map((p) => (
@@ -157,7 +189,7 @@ function Login() {
               />
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" disabled={busy || !authEnabled} className="mt-1 w-full">
+            <Button type="submit" disabled={busy || !authEnabled || Boolean(dbError)} className="mt-1 w-full">
               {busy ? "Working…" : mode === "in" ? "Sign in" : "Create account"}
             </Button>
           </form>
