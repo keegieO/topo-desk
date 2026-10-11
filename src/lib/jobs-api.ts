@@ -3,7 +3,6 @@ import { z } from "zod";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { invoiceNumber, normalizeJob, type Job } from "@/lib/job-types";
-import { seedJobs, SEED_REV } from "@/lib/job-seed";
 
 type JobRow = {
   id: string;
@@ -90,51 +89,20 @@ function fromRow(row: JobRow): Job {
   });
 }
 
-async function insertJob(userId: string, job: Job) {
-  const sql = await getSql();
-  await sql`
-    insert into jobs (
-      id, user_id, name, client, pm, email, phone, des, county, crs, kind, status,
-      miles, hours, planimetrics, rush, due, notes, csv_name, csv_text, remaps,
-      user_lines, coord_order, survey, ticket, files, time_log, change_orders,
-      invoice_status, invoice_no, sent_at, paid_at, created_at, updated_at
-    ) values (
-      ${job.id}, ${userId}, ${job.name}, ${job.client}, ${job.pm}, ${job.email},
-      ${job.phone ?? ""}, ${job.des}, ${job.county}, ${job.crs}, ${job.kind}, ${job.status},
-      ${job.miles}, ${job.hours}, ${job.planimetrics}, ${job.rush}, ${job.due}, ${job.notes},
-      ${job.csvName ?? null}, ${job.csvText ?? null}, ${JSON.stringify(job.remaps ?? {})},
-      ${JSON.stringify(job.userLines ?? [])}, ${job.coordOrder ?? "PNEZD"},
-      ${JSON.stringify({ ...(job.survey ?? {}), planLeaders: job.leaders ?? [] })}, ${job.ticket}, ${JSON.stringify(job.files)},
-      ${JSON.stringify(job.timeLog)}, ${JSON.stringify(job.changeOrders)},
-      ${job.invoiceStatus}, ${job.invoiceNo ?? null}, ${job.sentAt ?? null}, ${job.paidAt ?? null},
-      ${job.createdAt}, now()
-    )
-    on conflict (id) do nothing
-  `;
-}
-
+/**
+ * The shop's jobs, newest first.
+ *
+ * This function does NOT seed. An earlier revision wiped the table
+ * (`delete from jobs where user_id = …`) whenever a `SEED_REV` constant changed
+ * and replaced it with a demo job carrying a real INDOT district's contact
+ * details. That was both fabricated customer-facing data and a one-constant
+ * path to destroying live work. An empty shop now returns an empty list and the
+ * UI shows its empty state.
+ */
 export const listJobs = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    const meta = await sql<{ value: string }>`
-      select value from shop_meta where user_id = ${context.userId} and key = 'seed'
-    `;
-    const stale = meta[0]?.value !== SEED_REV;
-    if (stale) {
-      await sql`delete from jobs where user_id = ${context.userId}`;
-      await sql`
-        insert into shop_meta (user_id, key, value)
-        values (${context.userId}, 'seed', ${SEED_REV})
-        on conflict (user_id, key) do update set value = excluded.value
-      `;
-      const seeded = seedJobs().map((j) => ({
-        ...j,
-        id: `${context.userId.slice(0, 8)}-${j.id}`,
-      }));
-      for (const job of seeded) await insertJob(context.userId, job);
-      return seeded;
-    }
     const rows = await sql<JobRow>`
       select * from jobs where user_id = ${context.userId} order by updated_at desc
     `;

@@ -17,6 +17,21 @@ import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
 
 const databaseUrl = process.env.DATABASE_URL;
+
+// On Vercel a missing DATABASE_URL is fatal, not skippable: the deployed app has
+// no PGLite fallback, so skipping here ships a build whose every query fails at
+// runtime. Fail the build instead, with the fix in the message.
+if (!databaseUrl && process.env.VERCEL) {
+  console.error(
+    "[migrate] DATABASE_URL is not set, but this is a Vercel build.\n" +
+      "[migrate] The deployed app cannot fall back to PGLite — it needs a real Postgres.\n" +
+      "[migrate] Fix: Vercel -> Project -> Settings -> Environment Variables -> add\n" +
+      "[migrate]   DATABASE_URL = <your Neon connection string>\n" +
+      "[migrate] then redeploy.",
+  );
+  process.exit(1);
+}
+
 if (!databaseUrl) {
   console.log(
     "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",
@@ -27,27 +42,16 @@ if (!databaseUrl) {
 const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
 async function main() {
-  // Collect migration files: top-level migrations/*.sql + migrations/auth/*.sql
-  let entries;
+  // migrations/*.sql is the single schema source, matching the import.meta.glob
+  // in src/lib/db.ts that the PGLite fallback uses. Keep them identical: a
+  // subdirectory here would apply on Vercel but not in local dev.
+  let allEntries;
   try {
-    entries = await readdir(migrationsDir);
+    allEntries = await readdir(migrationsDir);
   } catch {
     console.log("[migrate] no migrations/ directory — nothing to do.");
     return;
   }
-
-  // Auth migrations live in migrations/auth/ — include them with a subdir prefix
-  // so the basename key stays unique (e.g. "auth/0001_auth.sql").
-  const authDir = join(migrationsDir, "auth");
-  let authEntries = [];
-  try {
-    authEntries = (await readdir(authDir)).map((f) => `auth/${f}`);
-  } catch {
-    // No auth subdir — fine.
-  }
-
-  // Combine: top-level first, then auth. pendingMigrations sorts by name.
-  const allEntries = [...entries, ...authEntries];
 
   if (pendingMigrations(allEntries, []).length === 0) {
     console.log("[migrate] no migrations — nothing to do.");
@@ -66,7 +70,6 @@ async function main() {
 
     let count = 0;
     for (const { name } of pendingMigrations(allEntries, applied)) {
-      // name may be "auth/0001_auth.sql" — resolve against migrationsDir
       const filePath = join(migrationsDir, name);
       const text = await readFile(filePath, "utf8");
       try {
