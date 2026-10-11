@@ -8,11 +8,11 @@
     "@tanstack/start-server-core": "1.169.39"
   },
   "scripts": {
-    "dev": "VITE_AUTH_ENABLED=false vite dev --host 0.0.0.0 --port 8080",
-    "dev:auth": "VITE_AUTH_ENABLED=true vite dev --host 0.0.0.0 --port 8080",
-    "build": "node scripts/migrate.mjs && VITE_AUTH_ENABLED=false vite build",
+    "dev": "cross-env VITE_AUTH_ENABLED=false vite dev --host 0.0.0.0 --port 8080",
+    "dev:auth": "cross-env VITE_AUTH_ENABLED=true vite dev --host 0.0.0.0 --port 8080",
+    "build": "node scripts/migrate.mjs && cross-env VITE_AUTH_ENABLED=false vite build",
     "db:migrate": "node scripts/migrate.mjs",
-    "build:dev": "VITE_AUTH_ENABLED=true vite build --mode development",
+    "build:dev": "cross-env VITE_AUTH_ENABLED=true vite build --mode development",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test src/lib/align.test.ts src/lib/cogo.test.ts src/lib/fieldbook.test.ts src/lib/terrain.test.ts src/lib/linear-edit.test.ts",
@@ -85,6 +85,7 @@
     "@types/react-dom": "^19.2.0",
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.20.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
