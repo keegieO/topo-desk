@@ -1,4 +1,6 @@
 import { fishbeckLevel } from "./fishbeck";
+import { activeLevel, activeSymbol, isIndianaActive } from "./active-standards";
+import type { SymbolCategory } from "@/standards/schema";
 
 export type MarkKind = "circle" | "square" | "tri" | "plus" | "diamond" | "pole" | "tree" | "x";
 
@@ -98,7 +100,33 @@ export const CODE_STYLE: Record<string, LineStyle> = {
   X: { color: "#8a8a86", weight: 1, mark: "x" },
 };
 
+const SYMBOL_MARK: Partial<Record<SymbolCategory, MarkKind>> = {
+  pole: "pole",
+  "tree-deciduous": "tree",
+  "tree-conifer": "tree",
+  shrub: "tree",
+  sign: "square",
+  "sign-post": "square",
+  inlet: "square",
+  "catch-basin": "square",
+  vault: "square",
+  meter: "square",
+  manhole: "circle",
+  hydrant: "diamond",
+  valve: "diamond",
+  benchmark: "tri",
+  "control-point": "tri",
+  monument: "tri",
+  spot: "plus",
+  guy: "x",
+};
+
 export function styleForCode(code?: string, cat?: string): LineStyle {
+  if (!isIndianaActive()) {
+    const lv = activeLevel(code, cat);
+    const sym = activeSymbol(code, cat);
+    return { color: lv.color, weight: lv.weight, dash: lv.dash, mark: (sym && SYMBOL_MARK[sym]) || styleFor(cat).mark };
+  }
   const raw = (code ?? "").toUpperCase();
   const k = raw.replace(/\d+$/g, "") || raw;
   const base = (k && CODE_STYLE[k]) || (raw && CODE_STYLE[raw]);

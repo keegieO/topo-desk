@@ -8,6 +8,8 @@ import {
 import { resolveFeature, type LabeledShot } from "./label";
 import { styleForCode } from "./symbology";
 import { fishbeckLayer, civilLayer, CIVIL_LAYER } from "./fishbeck";
+import { DEFAULT_PACK_ID, displayStyle, layerName as packLayerName } from "@/standards/loader";
+import type { StandardsPack } from "@/standards/schema";
 import type { Leader } from "./notes";
 import type { ContourRing } from "./tin";
 import type { TerrainModel } from "./terrain";
@@ -78,12 +80,23 @@ export function buildDxf(opts: {
   contours?: ContourRing[];
   /** Layer naming standard to embed. Defaults to "indot". */
   layerStd?: "indot" | "civil3d" | "both";
+  /**
+   * Standards pack for the job. Omitted or Indiana → the original INDOT logic,
+   * unchanged. Any other pack → that pack's layer names and colors.
+   */
+  pack?: StandardsPack;
 }): string {
   const { shots, chains } = opts;
-  const std = opts.layerStd ?? "indot";
+  const pack = opts.pack && opts.pack.id !== DEFAULT_PACK_ID ? opts.pack : undefined;
+  const std = pack ? "civil3d" : (opts.layerStd ?? "indot");
 
   const layers = new Map<string, number>();
   const ensure = (code: string): string => {
+    if (pack && code !== "P-LABEL") {
+      const name = packLayerName(pack, code);
+      if (!layers.has(name)) layers.set(name, aciFromHex(displayStyle(pack, code).color));
+      return name;
+    }
     const name =
       code === "P-LABEL"
         ? std === "civil3d" || std === "both"

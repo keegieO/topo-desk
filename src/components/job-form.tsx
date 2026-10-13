@@ -8,6 +8,9 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { useJobs, quoteJob, quoteLines } from "@/lib/jobs";
 import { useBook } from "@/lib/store";
 import { INGCS_ZONES } from "@/lib/ingcs";
+import { STATE_REGISTRY } from "@/standards/registry";
+import { getPack, packIdForState, packWarning } from "@/standards/loader";
+import { setActivePack } from "@/lib/active-standards";
 
 const BOOK = ".csv,.txt,.asc,.xyz,.pnezd,.penzd,.fbk,.rw5,.gsi,.jxl";
 
@@ -27,15 +30,26 @@ export function JobForm({
   const [hours, setHours] = useState("0");
   const [rush, setRush] = useState(false);
   const [countyId, setCountyId] = useState("hamilton");
+  const [usps, setUsps] = useState("IN");
+  const packId = packIdForState(usps);
+  const pack = getPack(packId);
+  const warning = packWarning(packId);
+  const isIndiana = usps === "IN";
+  const [otherCounty, setOtherCounty] = useState("");
+  const [crsPick, setCrsPick] = useState("");
   const zone = INGCS_ZONES.find((z) => z.id === countyId) ?? INGCS_ZONES[0];
-  const crs = `${zone.name} County InGCS — NAD 1983 (2011)`;
+  const crsOptions = pack.crs.filter((c) => !pack.state || pack.state === usps);
+  const crs = isIndiana
+    ? `${zone.name} County InGCS — NAD 1983 (2011)`
+    : crsPick || crsOptions[0]?.name || "State plane zone (set by the client)";
+  const countyName = isIndiana ? zone.name : otherCounty.trim();
 
   const preview = quoteJob({ hours: Number(hours) || 0, rush });
   const lines = quoteLines({ hours: Number(hours) || 0, rush });
 
   function arm(name: string) {
-    useBook.getState().setCrsId(`ingcs:${zone.id}`);
-    toast.success(`${name} · ${zone.name} County`);
+    if (isIndiana) useBook.getState().setCrsId(`ingcs:${zone.id}`);
+    toast.success(countyName ? `${name} · ${countyName} County` : name);
     void navigate({ to: "/extract" });
   }
 
@@ -44,14 +58,21 @@ export function JobForm({
     const fd = new FormData(e.currentTarget);
     const csvFile = fd.get("csv") as File | null;
     const hasBook = !!(csvFile && csvFile.size);
+    setActivePack(packId);
     const id = addJob({
-      name: String(fd.get("name") || `${zone.name} County`),
+      name: String(fd.get("name") || (countyName ? `${countyName} County` : "New job")),
       client: String(fd.get("client") || ""),
       pm: String(fd.get("pm") || ""),
       email: String(fd.get("email") || ""),
       des: String(fd.get("des") || ""),
-      county: zone.name,
+      county: countyName,
       crs,
+      standards: {
+        state: usps,
+        packId,
+        psName: String(fd.get("psName") || "").trim(),
+        psLicense: String(fd.get("psLicense") || "").trim(),
+      },
       kind: "conventional",
       miles: 0,
       hours: Number(hours) || 0,
@@ -76,7 +97,7 @@ export function JobForm({
       return;
     }
     useBook.getState().clear();
-    arm(zone.name);
+    arm(countyName || "New job");
   }
 
   return (
@@ -94,19 +115,56 @@ export function JobForm({
         <Field id="phone" label="Phone" placeholder="(317) 555-0167" />
         <Field id="des" label="Des. number" placeholder="2501384" />
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="county">County</Label>
-          <NativeSelect id="county" value={countyId} onChange={(e) => setCountyId(e.target.value)}>
-            {INGCS_ZONES.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.name}
+          <Label htmlFor="state">Project state</Label>
+          <NativeSelect id="state" value={usps} onChange={(e) => setUsps(e.target.value)}>
+            {STATE_REGISTRY.map((st) => (
+              <option key={st.usps} value={st.usps}>
+                {st.name}
+                {st.packId ? "" : " (generic standards)"}
               </option>
             ))}
           </NativeSelect>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label>Coordinate system</Label>
-          <p className="flex h-10 items-center font-mono text-xs text-foreground">{crs}</p>
+          <Label>Standards</Label>
+          <p className="flex h-10 items-center font-mono text-xs text-foreground">{pack.name}</p>
         </div>
+        {isIndiana ? (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="county">County</Label>
+            <NativeSelect id="county" value={countyId} onChange={(e) => setCountyId(e.target.value)}>
+              {INGCS_ZONES.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="otherCounty">County</Label>
+            <Input id="otherCounty" value={otherCounty} onChange={(e) => setOtherCounty(e.target.value)} />
+          </div>
+        )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="crsPick">Coordinate system</Label>
+          {isIndiana || crsOptions.length === 0 ? (
+            <p className="flex h-10 items-center font-mono text-xs text-foreground">{crs}</p>
+          ) : (
+            <NativeSelect id="crsPick" value={crsPick || crsOptions[0].name} onChange={(e) => setCrsPick(e.target.value)}>
+              {crsOptions.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </div>
+        <Field id="psName" label="Client's PS in responsible charge" placeholder="Name of the licensed surveyor" />
+        <Field id="psLicense" label="PS license number" />
+        {warning ? (
+          <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground sm:col-span-2">{warning}</p>
+        ) : null}
         <Field id="due" label="Due" type="date" />
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="hours">Reduction hours</Label>

@@ -8,7 +8,7 @@ import { parseField } from "@/lib/fieldcode";
 import { useJobs } from "@/lib/jobs";
 import { NativeSelect } from "@/components/ui/native-select";
 import { markSvg, styleForCode, SHEET_LEGEND } from "@/lib/symbology";
-import { fishbeckLevel } from "@/lib/fishbeck";
+import { activeLevel as fishbeckLevel } from "@/lib/active-standards";
 import { lookupCode } from "@/lib/catalog";
 import { nearestElevation, nearestShot, snapVertex } from "@/lib/snap";
 import type { LabeledShot } from "@/lib/label";

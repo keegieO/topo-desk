@@ -3,8 +3,10 @@ import { useBook } from "./store";
 import type { Job } from "./jobs";
 import { findIngcsZone, ingcsById } from "./ingcs";
 import { useJobs } from "./jobs";
+import { setActivePackForJob } from "./active-standards";
 
 export function loadJobBook(job: Job) {
+  setActivePackForJob(job);
   const text = job.csvText ?? (job.csvName === SAMPLE_NAME || job.des === "2501384" ? SAMPLE_CSV : undefined);
   const name = job.csvName ?? (text ? SAMPLE_NAME : undefined);
   if (text && name) {

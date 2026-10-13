@@ -16,6 +16,8 @@ import { stamp } from "./utils";
 import { zipTexts } from "./zip";
 import type { Leader } from "./notes";
 import { terrainFromBook, type TerrainModel } from "./terrain";
+import { getPack, packIdForJob } from "@/standards/loader";
+import { standardsFiles } from "@/standards/package-files";
 
 export function buildOrdPackage(opts: {
   stem: string;
@@ -36,6 +38,7 @@ export function buildOrdPackage(opts: {
   const names = cadFilenames(opts.stem);
   const survey = opts.job?.survey ?? emptySurvey();
   const qa = runQa(shots, remaps, userLines);
+  const pack = getPack(packIdForJob(job));
   const chainRows = chains.map((c) => ({
     code: c.code,
     n: c.shots.length || c.pts?.length || 0,
@@ -101,7 +104,7 @@ export function buildOrdPackage(opts: {
 
   const files: { name: string; text: string }[] = [
     { name: "INDEX.txt", text: index + "\r\n" },
-    { name: names.dxf, text: buildDxf({ shots, chains, leaders: opts.leaders, contours: terrain.contours }) },
+    { name: names.dxf, text: buildDxf({ shots, chains, leaders: opts.leaders, contours: terrain.contours, pack }) },
     {
       name: names.xml,
       text: buildLandXml({
@@ -166,6 +169,9 @@ export function buildOrdPackage(opts: {
       }),
     },
   ];
+
+  const produced = new Set(["csv-ord", "dxf", "landxml", "control-csv", "qa-report", "plan-sheet", "station-offset"]);
+  files.push(...standardsFiles({ pack, standards: job?.standards, shots, produced }));
 
   if (job) {
     files.push(

@@ -27,6 +27,7 @@ import {
 import { loadJobBook } from "@/lib/open-job";
 import { htmlInvoice, htmlProposal, htmlSow } from "@/lib/paper";
 import { printHtml } from "@/lib/print";
+import { getPack, packIdForJob, packWarning } from "@/standards/loader";
 
 export function JobTicket({ job }: { job: Job }) {
   const setStatus = useJobs((s) => s.setStatus);
@@ -100,8 +101,15 @@ export function JobTicket({ job }: { job: Job }) {
             <Meta k="PM" v={job.pm || "—"} />
             <Meta k="Hours logged" v={`${logged}`} />
             <Meta k="CRS" v={job.crs} span />
+            <Meta k="Standards" v={getPack(packIdForJob(job)).name} span />
+            <Meta k="PS in charge" v={job.standards?.psName ? `${job.standards.psName}${job.standards.psLicense ? ` · ${job.standards.psLicense}` : ""}` : "Not set"} span />
             <Meta k="Invoice" v={`${invoiceNumber(job)} · ${INVOICE_LABEL[job.invoiceStatus]}`} span />
           </dl>
+          {packWarning(packIdForJob(job)) ? (
+            <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              {packWarning(packIdForJob(job))}
+            </p>
+          ) : null}
           {job.files.length ? (
             <ul className="font-mono text-[0.6875rem] text-muted-foreground">
               {job.files.map((f) => (
