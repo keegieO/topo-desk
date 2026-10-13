@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBook } from "@/lib/store";
 import { resolveFeature } from "@/lib/label";
 import { styleForCode } from "@/lib/symbology";
-import { fishbeckKnown, fishbeckLevel } from "@/lib/fishbeck";
+import { activeKnown as fishbeckKnown, activeLevel as fishbeckLevel } from "@/lib/active-standards";
 import { cn } from "@/lib/utils";
 
 const CODE_NAME: Record<string, string> = {

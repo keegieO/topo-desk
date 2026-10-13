@@ -27,7 +27,7 @@ export type FbLevel = {
   civil?: string;
 };
 
-const CODE_LEVEL: Record<string, FbLevel> = {
+export const CODE_LEVEL: Record<string, FbLevel> = {
   EP:   { level: "S_RDWY_Pavement-edge",         color: "#3dde62", weight: 2.4, civil: "V-ROAD-EDGE" },
   EG:   { level: "S_RDWY_Edge of gravel",         color: "#d4c15a", weight: 2.1, civil: "V-ROAD-EDGE-GRV" },
   ES:   { level: "S_RDWY_Shoulder-edge",          color: "#8dff6a", weight: 2.1, dash: "8 5",  civil: "V-ROAD-SHLDR" },
@@ -76,7 +76,7 @@ const CODE_LEVEL: Record<string, FbLevel> = {
   PCON: { level: "S_TOPO_Conc slab",             color: "#5ad4d4", weight: 1.6, civil: "V-TOPO-CONC" },
 };
 
-const CAT_LEVEL: Record<string, FbLevel> = {
+export const CAT_LEVEL: Record<string, FbLevel> = {
   Roadway:          { level: "S_RDWY_Pavement-edge",        color: "#3dde62", weight: 2.2, civil: "V-ROAD-EDGE" },
   Drainage:         { level: "S_DR_Drainage pipe",          color: "#3ad4ff", weight: 2,   civil: "V-BRDN-PIPE" },
   Utility:          { level: "S_UTIL_Overhead Utility Line", color: "#d45cff", weight: 1.6, civil: "V-UTIL-OHWIRE" },
@@ -100,7 +100,7 @@ export const CIVIL_LAYER = {
   LABEL:         "V-ANNO-SPOT",
 } as const;
 
-const FALLBACK: FbLevel = { level: "S_TOPO_New feature", color: "#3dde62", weight: 1.7, civil: "V-TOPO" };
+export const FALLBACK: FbLevel = { level: "S_TOPO_New feature", color: "#3dde62", weight: 1.7, civil: "V-TOPO" };
 
 function rootCode(code?: string): string {
   return (code ?? "").toUpperCase().replace(/\d+$/g, "");

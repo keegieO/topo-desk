@@ -3,6 +3,9 @@ import type { UserLine } from "./chains";
 import type { Leader } from "./notes";
 import type { CoordOrder } from "./csv";
 import type { Observation } from "./fieldbook";
+import type { JobStandards } from "../standards/loader.ts";
+
+export type { JobStandards };
 
 export type JobKind = "conventional";
 export type JobStatus = "intake" | "extract" | "qa" | "ready" | "delivered";
@@ -104,6 +107,8 @@ export type Job = {
   phone?: string;
   changeOrders: ChangeOrder[];
   lineItems?: LineItem[];
+  /** Project state, standards pack and the client's PS in responsible charge. */
+  standards?: JobStandards;
 };
 
 export const emptySurvey = (): SurveyMeta => ({
@@ -249,6 +254,7 @@ export function normalizeJob(j: Partial<Job> & { id: string }): Job {
     phone: j.phone,
     changeOrders: j.changeOrders ?? [],
     lineItems: j.lineItems ?? [],
+    standards: { state: "IN", packId: "us-in-indot", ...(j.standards ?? {}) },
     id: j.id,
   };
 }

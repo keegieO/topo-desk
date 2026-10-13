@@ -15,9 +15,10 @@
     "build:dev": "cross-env VITE_AUTH_ENABLED=true vite build --mode development",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/align.test.ts src/lib/cogo.test.ts src/lib/fieldbook.test.ts src/lib/terrain.test.ts src/lib/linear-edit.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/align.test.ts src/lib/cogo.test.ts src/lib/fieldbook.test.ts src/lib/terrain.test.ts src/lib/linear-edit.test.ts src/standards/standards.test.ts",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "packs:import": "node --experimental-strip-types scripts/packs/import.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
