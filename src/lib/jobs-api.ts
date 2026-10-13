@@ -50,11 +50,13 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
 }
 
 function fromRow(row: JobRow): Job {
-  const surveyRaw = parseJson<(Job["survey"] & { planLeaders?: Job["leaders"]; jobStandards?: Job["standards"] }) | undefined>(row.survey, undefined);
+  const surveyRaw = parseJson<(Job["survey"] & { planLeaders?: Job["leaders"]; jobStandards?: Job["standards"]; jobLineItems?: Job["lineItems"] }) | undefined>(row.survey, undefined);
   const leaders = surveyRaw?.planLeaders ?? [];
   const standards = surveyRaw?.jobStandards;
+  const lineItems = surveyRaw?.jobLineItems;
   if (surveyRaw && "planLeaders" in surveyRaw) delete surveyRaw.planLeaders;
   if (surveyRaw && "jobStandards" in surveyRaw) delete surveyRaw.jobStandards;
+  if (surveyRaw && "jobLineItems" in surveyRaw) delete surveyRaw.jobLineItems;
   return normalizeJob({
     id: row.id,
     name: row.name,
@@ -81,6 +83,7 @@ function fromRow(row: JobRow): Job {
     survey: surveyRaw,
     leaders,
     standards,
+    lineItems,
     ticket: row.ticket,
     files: parseJson(row.files, []),
     timeLog: parseJson(row.time_log, []),
@@ -107,7 +110,7 @@ async function insertJob(userId: string, job: Job) {
       ${job.miles}, ${job.hours}, ${job.planimetrics}, ${job.rush}, ${job.due}, ${job.notes},
       ${job.csvName ?? null}, ${job.csvText ?? null}, ${JSON.stringify(job.remaps ?? {})},
       ${JSON.stringify(job.userLines ?? [])}, ${job.coordOrder ?? "PNEZD"},
-      ${JSON.stringify({ ...(job.survey ?? {}), planLeaders: job.leaders ?? [], jobStandards: job.standards })}, ${job.ticket}, ${JSON.stringify(job.files)},
+      ${JSON.stringify({ ...(job.survey ?? {}), planLeaders: job.leaders ?? [], jobStandards: job.standards, jobLineItems: job.lineItems ?? [] })}, ${job.ticket}, ${JSON.stringify(job.files)},
       ${JSON.stringify(job.timeLog)}, ${JSON.stringify(job.changeOrders)},
       ${job.invoiceStatus}, ${job.invoiceNo ?? null}, ${job.sentAt ?? null}, ${job.paidAt ?? null},
       ${job.createdAt}, now()
@@ -213,6 +216,20 @@ const jobSchema = z.object({
   sentAt: z.string().optional(),
   paidAt: z.string().optional(),
   phone: z.string().optional(),
+  lineItems: z
+    .array(
+      z.object({
+        id: z.string(),
+        kind: z.enum(["lidar_class", "breakline", "planimetric", "lidar_qa", "extra_coding", "custom"]),
+        desc: z.string().max(500),
+        qty: z.number(),
+        unit: z.string().max(20),
+        rate: z.number(),
+        amount: z.number(),
+      }),
+    )
+    .max(200)
+    .optional(),
   standards: z
     .object({
       state: z.string().max(2).optional(),
@@ -253,7 +270,7 @@ export const saveJob = createServerFn({ method: "POST" })
         ${job.miles}, ${job.hours}, ${job.planimetrics}, ${job.rush}, ${job.due}, ${job.notes},
         ${job.csvName ?? null}, ${job.csvText ?? null}, ${JSON.stringify(job.remaps ?? {})},
         ${JSON.stringify(job.userLines ?? [])}, ${job.coordOrder ?? "PNEZD"},
-        ${JSON.stringify({ ...(job.survey ?? {}), planLeaders: job.leaders ?? [], jobStandards: job.standards })}, ${job.ticket}, ${JSON.stringify(job.files)},
+        ${JSON.stringify({ ...(job.survey ?? {}), planLeaders: job.leaders ?? [], jobStandards: job.standards, jobLineItems: job.lineItems ?? [] })}, ${job.ticket}, ${JSON.stringify(job.files)},
         ${JSON.stringify(job.timeLog)}, ${JSON.stringify(job.changeOrders)},
         ${job.invoiceStatus}, ${job.invoiceNo ?? null}, ${job.sentAt ?? null}, ${job.paidAt ?? null},
         ${job.createdAt}, now()

@@ -149,3 +149,21 @@ test("level importer reads RGB, hex and indexed colors", async () => {
   assert.equal(levels[0].nativeWeight, 2);
   assert.equal(skipped.length, 1);
 });
+
+test("standards QA flags missing required attributes and missing PS", async () => {
+  const { standardsQa, descriptionKeysCsv } = await import("./qa.ts");
+  const pack = getPack(GENERIC_PACK_ID);
+  const shots = [
+    { point: "10", northing: 0, easting: 0, elevation: 800, description: "INL INV_OUT=795 TO=11 SIZE=15 MATERIAL=RCP TYPE=inlet" },
+    { point: "11", northing: 0, easting: 50, elevation: 799, description: "SMH TYPE=manhole INV_IN=796" },
+    { point: "12", northing: 5, easting: 5, elevation: 801, description: "PSGN" },
+  ];
+  const issues = standardsQa(pack, shots, { state: "OH" });
+  assert.ok(issues.some((i) => /No PS/.test(i.title)));
+  assert.ok(issues.some((i) => /SMH point missing invert out/i.test(i.title)));
+  assert.ok(issues.some((i) => i.title === "Drainage" && /uphill/.test(i.detail)), "795 → 796 runs uphill");
+  assert.ok(issues.some((i) => /PSGN point missing mutcd/i.test(i.title)));
+  const keys = descriptionKeysCsv(pack);
+  assert.match(keys.split("\r\n")[0], /^Code,Layer/);
+  assert.match(keys, /^INL\*,V-STRM-STRC,INLET,/m);
+});

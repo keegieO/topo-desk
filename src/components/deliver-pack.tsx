@@ -19,6 +19,9 @@ import { downloadBlob, downloadText } from "@/lib/utils";
 import { buildOrdPackage } from "@/lib/ord-package";
 import { useFirm } from "@/lib/firm";
 import { runQa } from "@/lib/qa";
+import { draftLabel, getPack, packIdForJob, packWarning } from "@/standards/loader";
+import { standardsFiles } from "@/standards/package-files";
+import { descriptionKeysCsv, standardsQa } from "@/standards/qa";
 
 export function DeliverPack() {
   const jobs = useJobs((s) => s.jobs);
@@ -60,6 +63,13 @@ export function DeliverPack() {
 
   const chains = useMemo(() => allChains(shots, remaps, userLines), [shots, remaps, userLines]);
   const qa = useMemo(() => runQa(shots, remaps, userLines), [shots, remaps, userLines]);
+  const pack = useMemo(() => getPack(packIdForJob(job)), [job]);
+  const stdQa = useMemo(() => standardsQa(pack, shots, job?.standards), [pack, shots, job?.standards]);
+  const stdFiles = useMemo(() => {
+    const produced = new Set(["csv-ord", "dxf", "landxml", "control-csv", "qa-report", "plan-sheet", "station-offset"]);
+    const files = standardsFiles({ pack, standards: job?.standards, shots, produced });
+    return { files, produced };
+  }, [pack, shots, job?.standards]);
   const align = useMemo(
     () => projectAlignment(shots, chains.map((c) => ({ code: c.code, pts: chainVertices(c) }))),
     [shots, chains],
@@ -100,7 +110,7 @@ export function DeliverPack() {
       return;
     }
     const names = cadFilenames(stem());
-    downloadText(names.dxf, buildDxf({ shots, chains, leaders }), "application/dxf;charset=utf-8");
+    downloadText(names.dxf, buildDxf({ shots, chains, leaders, pack }), "application/dxf;charset=utf-8");
     toast.success(names.dxf);
   }
 
@@ -175,6 +185,22 @@ export function DeliverPack() {
     }
     const name = `${stem()}_station_offset.csv`;
     downloadText(name, staOffCsv(shots, align));
+    toast.success(name);
+  }
+
+  function dlStdFile(name: string) {
+    const f = stdFiles.files.find((x) => x.name === name);
+    if (!f) {
+      toast.error("Nothing to export for this job");
+      return;
+    }
+    downloadText(`${stem().replace(/\.[^.]+$/, "")}_${name}`, f.text);
+    toast.success(name);
+  }
+
+  function dlKeys() {
+    const name = `${pack.id}_description_keys.csv`;
+    downloadText(name, descriptionKeysCsv(pack));
     toast.success(name);
   }
 
@@ -285,6 +311,74 @@ export function DeliverPack() {
               </ul>
             </div>
           ) : null}
+        </div>
+      </section>
+
+
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="kicker">Standards</p>
+            <h2 className="mt-1 font-display text-lg font-medium">{pack.name}</h2>
+            <p className="text-xs text-muted-foreground">{pack.agency} · {pack.software.primary}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => dlStdFile("drainage_structures.csv")} disabled={!stdFiles.produced.has("drainage-table")}>
+              <Download />
+              Drainage table
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => dlStdFile("sign_inventory.csv")} disabled={!stdFiles.produced.has("sign-inventory")}>
+              <Download />
+              Sign inventory
+            </Button>
+            <Button variant="outline" size="sm" onClick={dlKeys}>
+              <Download />
+              Civil 3D keys
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => dlStdFile("STANDARDS.txt")}>
+              <Download />
+              STANDARDS.txt
+            </Button>
+          </div>
+        </div>
+        {packWarning(pack.id) ? (
+          <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{packWarning(pack.id)}</p>
+        ) : null}
+        <p className="mt-3 rounded-md border border-dashed border-border px-3 py-2 font-mono text-[0.6875rem]">{draftLabel(pack, job)}</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <p className="text-sm font-medium">Deliverables</p>
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {pack.deliverables.map((d) => {
+                const done = d.auto && stdFiles.produced.has(d.auto);
+                return (
+                  <li key={d.id} className="flex items-start justify-between gap-3 text-sm">
+                    <span>
+                      {d.title}
+                      {d.note ? <span className="block text-xs text-muted-foreground">{d.note}</span> : null}
+                    </span>
+                    {done ? <Badge variant="ok">In package</Badge> : d.required ? <Badge variant="bad">To do</Badge> : <Badge variant="muted">Optional</Badge>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Standards QA for the PS</p>
+            {stdQa.length ? (
+              <ul className="mt-2 flex flex-col gap-2">
+                {stdQa.map((i, n) => (
+                  <li key={n} className="text-sm">
+                    <span className={i.severity === "error" ? "text-destructive" : i.severity === "warn" ? "text-warn" : ""}>{i.title}</span>
+                    <span className="block text-xs text-muted-foreground">{i.detail}</span>
+                    {i.points.length ? <span className="block font-mono text-[0.6875rem] text-muted-foreground">Pts {i.points.slice(0, 12).join(", ")}{i.points.length > 12 ? "…" : ""}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">No standards issues.</p>
+            )}
+          </div>
         </div>
       </section>
 

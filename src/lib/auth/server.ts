@@ -29,7 +29,13 @@ import { pgliteDialect } from "./pglite-dialect";
 import { PREVIEW_ALLOWED_HOSTS } from "./preview";
 
 // Kick (and share) PGLite bootstrap as soon as the auth server module loads.
-void ensureDbReady();
+// Must not be an unhandled rejection: with DATABASE_URL missing in a deployed
+// environment (e.g. a Vercel Preview without the variable) that would kill the
+// server process and every page would fail. Pages still render; data calls
+// report the missing database when they run.
+void ensureDbReady().catch((err) => {
+  console.error("[db] bootstrap failed:", err instanceof Error ? err.message : err);
+});
 
 /**
  * Preview secret must outlive module reloads: PGLite (and its session rows) is

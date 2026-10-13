@@ -36,13 +36,13 @@ function civilName(lv: FbLevel): string {
 }
 
 function categoryFor(name: string): FeatureCategory {
-  if (name.startsWith("V-UTIL") || name.includes("-UTIL-")) return "utilities";
-  if (name.startsWith("V-BRDN") || name.startsWith("V-STRM")) return "drainage";
-  if (name.startsWith("V-CTRL")) return "control";
-  if (name.startsWith("V-PROP")) return name.includes("SGN") ? "signage" : "property";
-  if (name.includes("TRAF")) return "signage";
-  if (name.startsWith("V-ROAD")) return "roadway";
+  if (name.includes("SGN") || name.includes("TRAF")) return "signage";
+  if (name.includes("UTIL")) return "utilities";
+  if (name.includes("BRDN") || name.includes("STRM")) return "drainage";
+  if (name.includes("CTRL")) return "control";
+  if (name.includes("PROP")) return "property";
   if (name.includes("TREE")) return "vegetation";
+  if (name.includes("ROAD")) return "roadway";
   return "terrain";
 }
 
@@ -137,7 +137,7 @@ export const GENERIC_PACK: PackInput = {
         lineStyle: lv.dash,
         terrain: point ? (category === "terrain" ? ("include" as const) : ("exclude" as const)) : ("breakline" as const),
         attributes:
-          category === "utilities" ? UTILITY_ATTRS : category === "signage" && point ? SIGN_ATTRS : ["DR", "CMP", "CPP", "PVC"].includes(code) ? PIPE_ATTRS : undefined,
+          category === "utilities" ? UTILITY_ATTRS : category === "signage" && point && level.includes("SGN") ? SIGN_ATTRS : ["DR", "CMP", "CPP", "PVC"].includes(code) ? PIPE_ATTRS : undefined,
         category,
         sourceId: NCS,
       };
